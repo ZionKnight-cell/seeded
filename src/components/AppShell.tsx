@@ -1,13 +1,15 @@
 import { Outlet } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { Capacitor } from '@capacitor/core'
 import BottomNav from './BottomNav'
 
 export default function AppShell() {
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW()
+  const isNative = Capacitor.isNativePlatform()
 
   return (
     <div className="min-h-[100svh] bg-forest text-ivory flex flex-col">
-      {needRefresh && (
+      {needRefresh && !isNative && (
         <div className="bg-forest-dark border-b border-gold/30 px-5 py-3 flex items-center justify-between gap-4 shrink-0">
           <p className="text-ivory text-xs leading-relaxed">
             A new version of Seeded is available.

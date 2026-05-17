@@ -14,6 +14,7 @@ A dedicated offline-first sermon notes app for capturing church messages, prayer
 | Routing | React Router v7 |
 | Storage | Dexie v4 (IndexedDB, offline-first) |
 | PWA | vite-plugin-pwa + Workbox |
+| Android | Capacitor 8 |
 | Icons | Lucide React |
 
 ## Local Development
@@ -92,14 +93,103 @@ Seeded is a Progressive Web App (PWA):
 - Church group or social features
 - Streaks, badges, or gamification
 
-## Future: Android Packaging
+## Android (Capacitor)
 
-Seeded can be packaged as a native Android APK using [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) (Trusted Web Activity) or [Capacitor](https://capacitorjs.com/).
+Seeded is packaged as a native Android app using [Capacitor](https://capacitorjs.com/). The `android/` folder is committed to the repo.
 
-Requirements before packaging:
-- Deploy to a live HTTPS URL (Vercel deployment covers this)
-- Ensure `manifest.webmanifest` is served correctly (vite-plugin-pwa generates this)
-- Set `start_url`, icons, `display: standalone`, `theme_color` in the manifest (all configured)
-- Generate a signed keystore for Play Store distribution
+### Prerequisites
 
-The PWA setup in this repo is already compatible with TWA packaging.
+- **Node.js 20+** and npm
+- **Android Studio** (installs the Android SDK, emulator, and Gradle automatically)
+  - Or Android SDK command-line tools + Java 17+
+- No separate Java install needed if you use Android Studio (it bundles a JDK)
+
+After installing Android Studio, open it once so it can finish the SDK setup. Make sure Android SDK Platform 34 or higher is installed (via **SDK Manager → SDK Platforms**).
+
+### android/local.properties
+
+This file is gitignored. Create it by hand after cloning:
+
+```
+sdk.dir=/path/to/Android/Sdk
+```
+
+On macOS it's typically `/Users/yourname/Library/Android/sdk`, on Linux `~/Android/Sdk`, on Windows `C:\Users\yourname\AppData\Local\Android\sdk`.
+
+### Standard build workflow
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build the web app
+npm run build
+
+# 3. Sync web assets into the Android project
+npx cap sync android
+# or: npm run cap:sync
+
+# 4. Open in Android Studio
+npx cap open android
+# or: npm run cap:open
+```
+
+From Android Studio, press **Run ▶** to build and install on a device or emulator.
+
+### Build a debug APK from the terminal
+
+```bash
+# Run from the repo root
+npm run android:build        # runs build + cap sync
+cd android && ./gradlew assembleDebug
+```
+
+Or with the convenience script:
+
+```bash
+npm run android:debug        # runs gradlew assembleDebug from android/
+```
+
+The debug APK will appear at:
+
+```
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Install the debug APK on your phone
+
+```bash
+# With a USB cable and USB debugging enabled on the device:
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Or transfer the APK file to your phone and open it (allow "Install unknown apps" from Files).
+
+### Build a release APK (for sharing or Play Store)
+
+1. Generate a signing keystore (one-time):
+   ```bash
+   keytool -genkey -v -keystore seeded-release.jks -alias seeded -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. In `android/app/build.gradle`, add a `signingConfigs` block pointing to your keystore.
+3. Run: `cd android && ./gradlew assembleRelease`
+4. Output: `android/app/build/outputs/apk/release/app-release.apk`
+
+### Local-only data warning
+
+All data is stored in the Android app's private IndexedDB (WebView storage). It is **not** synced anywhere.
+
+- Uninstalling the app **permanently deletes all notes**.
+- Clearing app data in Android Settings also deletes everything.
+- **Always export a backup** (Settings → Export Data) before uninstalling, reinstalling, or performing a factory reset.
+- The imported backup JSON can be restored via **Settings → Import Data** on any device.
+
+### Android app details
+
+| Field | Value |
+|---|---|
+| App ID | `com.seeded.sermonnotes` |
+| Min SDK | Android 7.0 (API 24) |
+| Target SDK | Android 16 (API 36) |
+| Version | 1.0 (versionCode 1) |
+| WebView scheme | `https://localhost` |
