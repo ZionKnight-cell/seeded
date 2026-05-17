@@ -204,16 +204,16 @@ export default function NoteDetail() {
             <div className="flex items-start gap-3">
               <Lightbulb size={15} className="text-gold shrink-0 mt-0.5" strokeWidth={1.5} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ivory mb-1">Still reflecting?</p>
+                <p className="text-sm font-medium text-ivory mb-1">Reflection not finished yet</p>
                 <p className="text-xs text-ivory-dim leading-relaxed mb-3">
-                  Use the Reflection Helper to shape this message into a prayer point and one faithful
-                  step for the week.
+                  This note has sermon notes but is missing a prayer point or growth step. Use the
+                  Reflection Helper to complete it.
                 </p>
                 <Link
                   to={`/notes/${note.id}/edit`}
                   className="text-xs font-semibold text-forest bg-gold px-4 py-2 rounded-lg inline-block"
                 >
-                  Edit and reflect
+                  Complete reflection
                 </Link>
               </div>
             </div>

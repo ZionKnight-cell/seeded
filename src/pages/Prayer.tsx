@@ -86,9 +86,15 @@ export default function Prayer() {
             <Heart size={26} className="text-gold" strokeWidth={1.5} />
           </div>
           <p className="text-ivory text-sm font-medium mb-1">No prayer points yet</p>
-          <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px]">
-            Prayer points from your sermon notes will appear here.
+          <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
+            Prayer points from your sermon notes will appear here after you add them or use the Reflection Helper.
           </p>
+          <Link
+            to="/add"
+            className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
+          >
+            Create sermon note
+          </Link>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
@@ -127,7 +133,7 @@ export default function Prayer() {
                   <button
                     onClick={() => setExpandedId(expandedId === prayer.id ? null : prayer.id)}
                     className="text-ivory-dim p-1 -mr-1"
-                    aria-label={expandedId === prayer.id ? 'Collapse' : 'Expand prayer'}
+                    aria-label={expandedId === prayer.id ? 'Collapse prayer' : 'Expand prayer'}
                   >
                     <ChevronDown
                       size={16}

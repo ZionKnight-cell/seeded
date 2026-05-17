@@ -99,21 +99,21 @@ export default function Notes() {
             <BookOpen size={26} className="text-gold" strokeWidth={1.5} />
           </div>
           <p className="text-ivory text-sm font-medium mb-1">No sermon notes yet</p>
-          <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px] mb-6">
-            Start capturing messages that move you.
+          <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
+            Sermon notes you create will appear here. Start with one message from church, Bible study, or personal reflection.
           </p>
           <Link
             to="/add"
             className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
           >
-            Add First Note
+            Create sermon note
           </Link>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-ivory-muted text-sm">
             {filter === 'needs_reflection'
-              ? 'All your notes with full notes have a prayer point and growth step — well done.'
+              ? 'Nothing waiting for reflection — all your notes with content have a prayer point and growth step.'
               : 'No notes match your search.'}
           </p>
           <button

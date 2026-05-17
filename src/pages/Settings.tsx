@@ -1,14 +1,16 @@
 import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Shield, Calendar, Info, Trash2,
-  Download, Upload, Wrench, Wifi, Smartphone, BookOpen,
+  Download, Upload, Wrench, Wifi, Smartphone, BookOpen, ChevronDown, RotateCcw,
 } from 'lucide-react'
 import { clearAllData, exportAllData, importAllData, repairData } from '../db/database'
 import { useToast } from '../components/Toast'
 import { usePWA } from '../hooks/usePWA'
 import { APP_VERSION } from '../lib/version'
 import { formatDate } from '../lib/dates'
+import HowSeededWorks from '../components/HowSeededWorks'
+import { ONBOARDING_KEY } from './Onboarding'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
 
 interface ImportPreview {
@@ -29,6 +31,7 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function Settings() {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const { isOnline, canInstall, triggerInstall } = usePWA()
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showImportConfirm, setShowImportConfirm] = useState(false)
@@ -36,7 +39,13 @@ export default function Settings() {
   const [cleared, setCleared] = useState(false)
   const [importing, setImporting] = useState(false)
   const [repairing, setRepairing] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleResetOnboarding() {
+    localStorage.removeItem(ONBOARDING_KEY)
+    navigate('/onboarding')
+  }
 
   async function handleExport() {
     const data = await exportAllData()
@@ -122,6 +131,55 @@ export default function Settings() {
       {/* About */}
       <SectionLabel>About</SectionLabel>
       <div className="space-y-3 mb-7">
+        {/* How Seeded works */}
+        <div className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowGuide(g => !g)}
+            className="w-full flex items-center justify-between p-5 text-left"
+            aria-expanded={showGuide}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+                <BookOpen size={17} className="text-gold" strokeWidth={1.5} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-ivory">How Seeded works</p>
+                <p className="text-xs text-ivory-dim mt-0.5">The 4-step rhythm</p>
+              </div>
+            </div>
+            <ChevronDown
+              size={16}
+              strokeWidth={1.5}
+              className={`text-ivory-dim transition-transform shrink-0 ${showGuide ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showGuide && (
+            <div className="border-t border-forest-light px-5 pb-5 pt-4">
+              <HowSeededWorks />
+            </div>
+          )}
+        </div>
+
+        {/* Welcome guide reset */}
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+              <RotateCcw size={17} className="text-gold" strokeWidth={1.5} />
+            </div>
+            <p className="text-sm font-medium text-ivory">Welcome Guide</p>
+          </div>
+          <p className="text-ivory-dim text-sm leading-relaxed mb-4">
+            Show the welcome guide again to revisit how Seeded works from the beginning.
+          </p>
+          <button
+            onClick={handleResetOnboarding}
+            className="text-sm text-gold font-medium border border-gold/40 px-4 py-2 rounded-xl"
+          >
+            Show welcome guide again
+          </button>
+        </div>
+
         <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">

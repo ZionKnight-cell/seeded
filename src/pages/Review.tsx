@@ -68,9 +68,9 @@ export default function Review() {
 
   return (
     <div className="px-5 pt-8 pb-4">
-      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-1">Weekly Review</h1>
+      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-1">Growth</h1>
       <p className="text-ivory-dim text-sm mb-5 leading-relaxed">
-        Hearing is the beginning. Growth happens when the Word is practiced.
+        Track how you practised what you heard. Update your growth steps here.
       </p>
 
       {/* Filter Tabs */}
@@ -96,10 +96,16 @@ export default function Review() {
           <div className="w-16 h-16 rounded-2xl bg-forest-mid border border-forest-light flex items-center justify-center mb-4">
             <TrendingUp size={26} className="text-gold" strokeWidth={1.5} />
           </div>
-          <p className="text-ivory text-sm font-medium mb-1">Nothing to review yet</p>
-          <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px]">
-            Growth steps help you practice what you heard. Add a weekly action step when writing a sermon note.
+          <p className="text-ivory text-sm font-medium mb-1">No growth steps yet</p>
+          <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
+            Growth steps help you practise one thing you heard from a sermon during the week. Add a growth step when creating a sermon note.
           </p>
+          <Link
+            to="/add"
+            className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
+          >
+            Create sermon note
+          </Link>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
@@ -140,7 +146,7 @@ export default function Review() {
                   <button
                     onClick={() => setExpandedId(expandedId === step.id ? null : step.id)}
                     className="text-ivory-dim p-1 -mr-1"
-                    aria-label={expandedId === step.id ? 'Collapse' : 'Expand step'}
+                    aria-label={expandedId === step.id ? 'Collapse step' : 'Expand step'}
                   >
                     <ChevronDown
                       size={16}

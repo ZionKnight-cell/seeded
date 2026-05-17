@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Settings, Plus, Target, BookOpen, Heart, Lightbulb } from 'lucide-react'
 import { db } from '../db/database'
 import { formatDate } from '../lib/dates'
+import HowSeededWorks from '../components/HowSeededWorks'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
 
 interface DashboardData {
@@ -84,7 +85,7 @@ export default function Home() {
       {/* Hero */}
       <div className="mb-8">
         <h1 className="text-[28px] font-semibold text-ivory leading-tight tracking-tight mb-2">
-          {isEmpty ? 'Welcome to Seeded.' : 'Let the Word take root.'}
+          Let the Word take root.
         </h1>
         <p className="text-ivory-dim text-sm leading-relaxed">
           Capture the message. Reflect on it. Pray through it. Practice one step.
@@ -97,23 +98,24 @@ export default function Home() {
         className="flex items-center justify-center gap-2 w-full bg-gold text-forest font-semibold py-4 rounded-2xl mb-6 shadow-lg text-[15px]"
       >
         <Plus size={18} strokeWidth={2.5} />
-        New Sermon Note
+        {isEmpty ? 'Create your first sermon note' : 'New Sermon Note'}
       </Link>
 
       {isEmpty ? (
-        <div className="bg-forest-mid rounded-2xl p-6 border border-forest-light">
-          <div className="flex items-center gap-2 mb-4">
-            <BookOpen size={16} className="text-gold shrink-0" strokeWidth={1.5} />
-            <p className="text-[10px] font-semibold text-gold uppercase tracking-widest">Getting Started</p>
+        <>
+          <div className="mb-6">
+            <h2 className="text-[17px] font-semibold text-ivory mb-2">Start here</h2>
+            <p className="text-ivory-dim text-sm leading-relaxed">
+              Your first seed starts with one sermon note. Capture the message, reflect on it, pray through it, and choose one growth step for the week.
+            </p>
           </div>
-          <p className="text-ivory text-sm leading-relaxed mb-3">
-            Capture what you hear. Keep what matters. Let it shape how you live.
-          </p>
-          <p className="text-ivory-dim text-sm leading-relaxed">
-            Add your first sermon note — then use the Reflection Helper to turn it into a prayer point
-            and one faithful step for the week.
-          </p>
-        </div>
+          <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+            <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-5">
+              How Seeded works
+            </p>
+            <HowSeededWorks />
+          </div>
+        </>
       ) : (
         <>
           {/* Ready to Reflect card */}
@@ -127,15 +129,15 @@ export default function Home() {
               </div>
               <p className="text-ivory text-sm leading-relaxed mb-3">
                 {data.reflectionCount === 1
-                  ? 'You have a sermon note with notes but no prayer point or growth step yet.'
-                  : `You have ${data.reflectionCount} sermon notes waiting for a prayer point or growth step.`}
+                  ? 'One of your notes has content but is missing a prayer point or growth step.'
+                  : `${data.reflectionCount} sermon notes have content but are missing a prayer point or growth step.`}
               </p>
               {data.reflectionNote && (
                 <Link
                   to={`/notes/${data.reflectionNote.id}/edit`}
                   className="text-xs font-semibold text-gold"
                 >
-                  Continue reflection →
+                  Complete reflection →
                 </Link>
               )}
             </div>

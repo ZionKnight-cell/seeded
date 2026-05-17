@@ -148,7 +148,9 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const inputCls = 'w-full bg-forest border border-forest-light text-ivory rounded-xl px-4 py-3 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold transition-colors'
   const textareaCls = `${inputCls} resize-none`
   const labelCls = 'block text-[10px] font-semibold text-gold uppercase tracking-widest mb-2'
-  const sectionLabelCls = 'text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-4'
+  const sectionLabelCls = 'text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-2'
+  const sectionHelpCls = 'text-xs text-ivory-dim leading-relaxed mb-4'
+  const fieldHintCls = 'mt-1.5 text-xs text-ivory-dim leading-relaxed'
 
   if (!loaded) {
     return (
@@ -195,6 +197,9 @@ export default function NoteForm({ mode = 'add' }: Props) {
         {/* ── Section 1: Sermon Details ── */}
         <section>
           <p className={sectionLabelCls}>Sermon Details</p>
+          <p className={sectionHelpCls}>
+            Start with the basics — everything except the title is optional. You can always edit later.
+          </p>
           <div className="space-y-4">
             <div>
               <label className={labelCls}>Title *</label>
@@ -267,34 +272,14 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 className={inputCls}
               />
             </div>
-            <div>
-              <label className={labelCls}>Topic / Category</label>
-              <select value={form.category} onChange={set('category')} className={inputCls}>
-                <option value="">Select a category</option>
-                {ALL_CATEGORIES.map(c => (
-                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Tags</label>
-              <input
-                type="text"
-                value={form.tags}
-                onChange={set('tags')}
-                placeholder="faith, grace, surrender (comma-separated)"
-                className={inputCls}
-              />
-            </div>
           </div>
         </section>
 
         {/* ── Section 2: Live Notes ── */}
         <section>
           <p className={sectionLabelCls}>Live Notes</p>
-          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
-            Capture what you can during the service. The reflection sections below can wait — you can
-            always come back after.
+          <p className={sectionHelpCls}>
+            Write freely while listening. You can come back to reflect later — just save first.
           </p>
           <div className="space-y-4">
             <div>
@@ -331,8 +316,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
         {/* ── Section 3: My Response ── */}
         <section>
           <p className={sectionLabelCls}>My Response</p>
-          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
-            What did this message stir in you? These can be filled during or after service.
+          <p className={sectionHelpCls}>
+            After service, use these to capture what this message means for you personally.
           </p>
           <div className="space-y-4">
             <div>
@@ -354,6 +339,9 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 placeholder="What did the Spirit highlight for me personally?"
                 className={textareaCls}
               />
+              <p className={fieldHintCls}>
+                Something the message revealed, corrected, encouraged, or challenged in you.
+              </p>
             </div>
           </div>
         </section>
@@ -361,9 +349,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
         {/* ── Section 4: Prayer & Growth Step ── */}
         <section>
           <p className={sectionLabelCls}>Prayer &amp; Growth Step</p>
-          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
-            Turn this sermon into one prayer and one faithful step. Both are optional — add them when
-            you're ready.
+          <p className={sectionHelpCls}>
+            Both are optional — add them when you're ready to reflect on the message.
           </p>
           <div className="space-y-4">
             <div>
@@ -375,6 +362,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 placeholder="What will I pray about from this message?"
                 className={textareaCls}
               />
+              <p className={fieldHintCls}>A prayer response to what you heard.</p>
             </div>
             <div>
               <label className={labelCls}>Weekly Growth Step</label>
@@ -385,6 +373,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 placeholder="One thing I will do this week because of this message"
                 className={textareaCls}
               />
+              <p className={fieldHintCls}>One simple action you can practise this week.</p>
             </div>
             <div>
               <label className={labelCls}>Follow-up Status</label>
@@ -393,6 +382,36 @@ export default function NoteForm({ mode = 'add' }: Props) {
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
+              <p className={fieldHintCls}>Track whether you acted on this growth step.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 5: Organization ── */}
+        <section>
+          <p className={sectionLabelCls}>Organization</p>
+          <p className={sectionHelpCls}>
+            Category and tags help you find notes later. Both are optional.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className={labelCls}>Topic / Category</label>
+              <select value={form.category} onChange={set('category')} className={inputCls}>
+                <option value="">Select a category</option>
+                {ALL_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Tags</label>
+              <input
+                type="text"
+                value={form.tags}
+                onChange={set('tags')}
+                placeholder="faith, grace, surrender (comma-separated)"
+                className={inputCls}
+              />
             </div>
           </div>
         </section>
