@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ChevronDown, Plus, BookOpen } from 'lucide-react'
+import { Heart, ChevronDown, Plus, BookOpen, Sun } from 'lucide-react'
 import { getAllPrayerPoints, updatePrayerStatus, addPrayerUpdate } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
@@ -87,13 +87,13 @@ export default function Prayer() {
           </div>
           <p className="text-ivory text-sm font-medium mb-1">No prayer points yet</p>
           <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
-            Prayer points from your sermon notes will appear here after you add them or use the Reflection Helper.
+            Prayer points from your notes will appear here after you add them or use the Reflection Helper.
           </p>
           <Link
             to="/add"
             className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
           >
-            Create sermon note
+            Create a note
           </Link>
         </div>
       ) : filtered.length === 0 ? (
@@ -102,137 +102,151 @@ export default function Prayer() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(prayer => (
-            <div key={prayer.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
-              <div className="p-5">
-                {/* Sermon source */}
-                <div className="flex items-center gap-1.5 mb-3">
-                  <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
-                  <Link
-                    to={`/notes/${prayer.sermonNoteId}`}
-                    className="text-xs text-gold font-medium truncate"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {prayer.sermonTitle}
-                  </Link>
-                </div>
-
-                {/* Prayer text + status badge */}
-                <div className="flex items-start gap-3 mb-3">
-                  <p className="text-ivory text-sm leading-relaxed flex-1">{prayer.text}</p>
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE[prayer.status]}`}
-                  >
-                    {PRAYER_STATUS_LABELS[prayer.status]}
-                  </span>
-                </div>
-
-                {/* Date + expand */}
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-ivory-dim">{formatDate(prayer.createdAt)}</p>
-                  <button
-                    onClick={() => setExpandedId(expandedId === prayer.id ? null : prayer.id)}
-                    className="text-ivory-dim p-1 -mr-1"
-                    aria-label={expandedId === prayer.id ? 'Collapse prayer' : 'Expand prayer'}
-                  >
-                    <ChevronDown
-                      size={16}
-                      strokeWidth={1.5}
-                      className={`transition-transform ${expandedId === prayer.id ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {expandedId === prayer.id && (
-                <div className="border-t border-forest-light px-5 py-4 space-y-4">
-                  {/* Status Buttons */}
-                  <div>
-                    <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
-                      Update Status
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {(['active', 'answered', 'archived'] as PrayerStatus[]).map(s => (
-                        <button
-                          key={s}
-                          onClick={() => handleStatus(prayer.id, s)}
-                          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                            prayer.status === s
-                              ? 'bg-gold text-forest border-gold font-semibold'
-                              : 'border-forest-light text-ivory-dim'
-                          }`}
-                        >
-                          {PRAYER_STATUS_LABELS[s]}
-                        </button>
-                      ))}
-                    </div>
+          {filtered.map(prayer => {
+            const isQT = prayer.noteType === 'quiet_time'
+            return (
+              <div key={prayer.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
+                <div className="p-5">
+                  {/* Source */}
+                  <div className="flex items-center gap-1.5 mb-3">
+                    {isQT
+                      ? <Sun size={12} strokeWidth={2} className="text-gold shrink-0" />
+                      : <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
+                    }
+                    <Link
+                      to={`/notes/${prayer.sermonNoteId}`}
+                      className="text-xs text-gold font-medium truncate"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {prayer.sermonTitle}
+                    </Link>
+                    {isQT && (
+                      <span className="text-[9px] font-semibold text-gold/60 border border-gold/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">
+                        Quiet Time
+                      </span>
+                    )}
                   </div>
 
-                  {/* Open sermon link */}
-                  <Link
-                    to={`/notes/${prayer.sermonNoteId}`}
-                    className="flex items-center gap-1.5 text-xs text-gold font-medium"
-                  >
-                    <BookOpen size={12} strokeWidth={2} />
-                    Open sermon
-                  </Link>
+                  {/* Prayer text + status badge */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <p className="text-ivory text-sm leading-relaxed flex-1">{prayer.text}</p>
+                    <span
+                      className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE[prayer.status]}`}
+                    >
+                      {PRAYER_STATUS_LABELS[prayer.status]}
+                    </span>
+                  </div>
 
-                  {/* Updates */}
-                  {prayer.updates.length > 0 && (
+                  {/* Date + expand */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-ivory-dim">{formatDate(prayer.createdAt)}</p>
+                    <button
+                      onClick={() => setExpandedId(expandedId === prayer.id ? null : prayer.id)}
+                      className="text-ivory-dim p-1 -mr-1"
+                      aria-label={expandedId === prayer.id ? 'Collapse prayer' : 'Expand prayer'}
+                    >
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={1.5}
+                        className={`transition-transform ${expandedId === prayer.id ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {expandedId === prayer.id && (
+                  <div className="border-t border-forest-light px-5 py-4 space-y-4">
+                    {/* Status Buttons */}
                     <div>
                       <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
-                        Journal
+                        Update Status
                       </p>
-                      <div className="space-y-2">
-                        {prayer.updates.map(u => (
-                          <p key={u.id} className="text-xs text-ivory-muted leading-relaxed">
-                            <span className="text-ivory-dim mr-1.5">{formatDate(u.createdAt)}</span>
-                            {u.text}
-                          </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(['active', 'answered', 'archived'] as PrayerStatus[]).map(s => (
+                          <button
+                            key={s}
+                            onClick={() => handleStatus(prayer.id, s)}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                              prayer.status === s
+                                ? 'bg-gold text-forest border-gold font-semibold'
+                                : 'border-forest-light text-ivory-dim'
+                            }`}
+                          >
+                            {PRAYER_STATUS_LABELS[s]}
+                          </button>
                         ))}
                       </div>
                     </div>
-                  )}
 
-                  {/* Add Update */}
-                  {addingTo === prayer.id ? (
-                    <div className="space-y-2">
-                      <textarea
-                        value={updateText[prayer.id] ?? ''}
-                        onChange={e => setUpdateText(t => ({ ...t, [prayer.id]: e.target.value }))}
-                        rows={2}
-                        placeholder="Share what God has been doing..."
-                        className="w-full bg-forest border border-forest-light text-ivory rounded-xl px-3 py-2 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold resize-none"
-                        autoFocus
-                      />
-                      <div className="flex gap-2 items-center">
-                        <button
-                          onClick={() => setAddingTo(null)}
-                          className="text-xs text-ivory-dim px-3 py-1.5"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleAddUpdate(prayer.id)}
-                          className="text-xs bg-gold text-forest font-semibold px-4 py-1.5 rounded-lg"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setAddingTo(prayer.id)}
+                    {/* Open note link */}
+                    <Link
+                      to={`/notes/${prayer.sermonNoteId}`}
                       className="flex items-center gap-1.5 text-xs text-gold font-medium"
                     >
-                      <Plus size={13} strokeWidth={2.5} />
-                      Add journal entry
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                      {isQT
+                        ? <Sun size={12} strokeWidth={2} />
+                        : <BookOpen size={12} strokeWidth={2} />
+                      }
+                      Open note
+                    </Link>
+
+                    {/* Updates */}
+                    {prayer.updates.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
+                          Journal
+                        </p>
+                        <div className="space-y-2">
+                          {prayer.updates.map(u => (
+                            <p key={u.id} className="text-xs text-ivory-muted leading-relaxed">
+                              <span className="text-ivory-dim mr-1.5">{formatDate(u.createdAt)}</span>
+                              {u.text}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Update */}
+                    {addingTo === prayer.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={updateText[prayer.id] ?? ''}
+                          onChange={e => setUpdateText(t => ({ ...t, [prayer.id]: e.target.value }))}
+                          rows={2}
+                          placeholder="Share what God has been doing..."
+                          className="w-full bg-forest border border-forest-light text-ivory rounded-xl px-3 py-2 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold resize-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-2 items-center">
+                          <button
+                            onClick={() => setAddingTo(null)}
+                            className="text-xs text-ivory-dim px-3 py-1.5"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleAddUpdate(prayer.id)}
+                            className="text-xs bg-gold text-forest font-semibold px-4 py-1.5 rounded-lg"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAddingTo(prayer.id)}
+                        className="flex items-center gap-1.5 text-xs text-gold font-medium"
+                      >
+                        <Plus size={13} strokeWidth={2.5} />
+                        Add journal entry
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

@@ -49,6 +49,7 @@ export async function createSermonNote(
 ): Promise<string> {
   const id = uuid()
   const ts = now()
+  const noteType = data.noteType ?? 'sermon'
 
   await db.sermonNotes.add({ ...data, id, createdAt: ts, updatedAt: ts })
 
@@ -57,6 +58,7 @@ export async function createSermonNote(
       id: uuid(),
       sermonNoteId: id,
       sermonTitle: data.title,
+      noteType,
       text: data.prayerPoint,
       status: 'active',
       updates: [],
@@ -71,6 +73,7 @@ export async function createSermonNote(
       id: uuid(),
       sermonNoteId: id,
       sermonTitle: data.title,
+      noteType,
       text: data.weeklyActionStep,
       status: data.followUpStatus,
       weekStartDate: sermonDate,
@@ -93,6 +96,7 @@ export async function updateSermonNote(
   const note = await db.sermonNotes.get(id)
   if (!note) return
   const newTitle = updates.title ?? note.title
+  const noteType = note.noteType ?? 'sermon'
 
   if ('prayerPoint' in updates) {
     const existing = await db.prayerPoints.where('sermonNoteId').equals(id).first()
@@ -108,6 +112,7 @@ export async function updateSermonNote(
           id: uuid(),
           sermonNoteId: id,
           sermonTitle: newTitle,
+          noteType,
           text: updates.prayerPoint,
           status: 'active',
           updates: [],
@@ -138,6 +143,7 @@ export async function updateSermonNote(
           id: uuid(),
           sermonNoteId: id,
           sermonTitle: newTitle,
+          noteType,
           text: updates.weeklyActionStep,
           status: 'not_started',
           weekStartDate: sermonDate,

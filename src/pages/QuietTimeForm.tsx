@@ -5,19 +5,15 @@ import { createSermonNote, updateSermonNote, getSermonNote } from '../db/databas
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
 import { buildBibleSearchUrl } from '../lib/bibleLinks'
-import { ALL_CATEGORIES, CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
-import type { SermonCategory, FollowUpStatus } from '../types'
+import { FOLLOW_UP_LABELS } from '../types'
+import type { FollowUpStatus } from '../types'
 import ReflectionHelper from '../components/ReflectionHelper'
 
 interface FormState {
   title: string
   sermonDate: string
-  churchName: string
-  preacherName: string
   mainBiblePassage: string
-  otherScriptureReferences: string
-  category: string
-  tags: string
+  devotionalSource: string
   fullNotes: string
   keyQuote: string
   mainTakeaway: string
@@ -25,36 +21,39 @@ interface FormState {
   prayerPoint: string
   weeklyActionStep: string
   followUpStatus: string
+  gratitude: string
+  seasonMood: string
+  answeredPrayer: string
+  tags: string
   isFavorite: boolean
 }
 
-const EMPTY_TEMPLATE: Omit<FormState, 'sermonDate'> = {
-  title: '',
-  churchName: '',
-  preacherName: '',
-  mainBiblePassage: '',
-  otherScriptureReferences: '',
-  category: '',
-  tags: '',
-  fullNotes: '',
-  keyQuote: '',
-  mainTakeaway: '',
-  personalConviction: '',
-  prayerPoint: '',
-  weeklyActionStep: '',
-  followUpStatus: 'not_started',
-  isFavorite: false,
-}
-
 function makeEmpty(): FormState {
-  return { ...EMPTY_TEMPLATE, sermonDate: todayIso() }
+  return {
+    title: '',
+    sermonDate: todayIso(),
+    mainBiblePassage: '',
+    devotionalSource: '',
+    fullNotes: '',
+    keyQuote: '',
+    mainTakeaway: '',
+    personalConviction: '',
+    prayerPoint: '',
+    weeklyActionStep: '',
+    followUpStatus: 'not_started',
+    gratitude: '',
+    seasonMood: '',
+    answeredPrayer: '',
+    tags: '',
+    isFavorite: false,
+  }
 }
 
 interface Props {
   mode?: 'add' | 'edit'
 }
 
-export default function NoteForm({ mode = 'add' }: Props) {
+export default function QuietTimeForm({ mode = 'add' }: Props) {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { showToast } = useToast()
@@ -71,12 +70,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
         setForm({
           title: note.title,
           sermonDate: note.sermonDate.split('T')[0],
-          churchName: note.churchName ?? '',
-          preacherName: note.preacherName ?? '',
           mainBiblePassage: note.mainBiblePassage ?? '',
-          otherScriptureReferences: note.otherScriptureReferences ?? '',
-          category: note.category ?? '',
-          tags: note.tags?.join(', ') ?? '',
+          devotionalSource: note.devotionalSource ?? '',
           fullNotes: note.fullNotes ?? '',
           keyQuote: note.keyQuote ?? '',
           mainTakeaway: note.mainTakeaway ?? '',
@@ -84,6 +79,10 @@ export default function NoteForm({ mode = 'add' }: Props) {
           prayerPoint: note.prayerPoint ?? '',
           weeklyActionStep: note.weeklyActionStep ?? '',
           followUpStatus: note.followUpStatus,
+          gratitude: note.gratitude ?? '',
+          seasonMood: note.seasonMood ?? '',
+          answeredPrayer: note.answeredPrayer ?? '',
+          tags: note.tags?.join(', ') ?? '',
           isFavorite: note.isFavorite,
         })
         setLoaded(true)
@@ -101,7 +100,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
   async function handleSave() {
     if (!form.title.trim()) {
-      setError('Please add a sermon title.')
+      setError('Please add a title for this quiet time note.')
       titleRef.current?.focus()
       return
     }
@@ -110,15 +109,11 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
     const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
     const data = {
-      noteType: 'sermon' as const,
+      noteType: 'quiet_time' as const,
       title: form.title.trim(),
       sermonDate: form.sermonDate || todayIso(),
-      churchName: form.churchName.trim() || undefined,
-      preacherName: form.preacherName.trim() || undefined,
       mainBiblePassage: form.mainBiblePassage.trim() || undefined,
-      otherScriptureReferences: form.otherScriptureReferences.trim() || undefined,
-      category: (form.category as SermonCategory) || undefined,
-      tags: tags.length ? tags : undefined,
+      devotionalSource: form.devotionalSource.trim() || undefined,
       fullNotes: form.fullNotes.trim() || undefined,
       keyQuote: form.keyQuote.trim() || undefined,
       mainTakeaway: form.mainTakeaway.trim() || undefined,
@@ -126,17 +121,21 @@ export default function NoteForm({ mode = 'add' }: Props) {
       prayerPoint: form.prayerPoint.trim() || undefined,
       weeklyActionStep: form.weeklyActionStep.trim() || undefined,
       followUpStatus: form.followUpStatus as FollowUpStatus,
+      gratitude: form.gratitude.trim() || undefined,
+      seasonMood: form.seasonMood.trim() || undefined,
+      answeredPrayer: form.answeredPrayer.trim() || undefined,
+      tags: tags.length ? tags : undefined,
       isFavorite: form.isFavorite,
     }
 
     try {
       if (mode === 'edit' && id) {
         await updateSermonNote(id, data)
-        showToast('Note updated')
+        showToast('Quiet time updated')
         navigate(`/notes/${id}`)
       } else {
         const newId = await createSermonNote(data)
-        showToast('Sermon note saved')
+        showToast('Quiet time saved')
         navigate(`/notes/${newId}`)
       }
     } catch (err) {
@@ -174,7 +173,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
             <ChevronLeft size={24} strokeWidth={1.5} />
           </Link>
           <h1 className="text-xl font-semibold text-ivory tracking-tight">
-            {mode === 'edit' ? 'Edit Note' : 'New Sermon Note'}
+            {mode === 'edit' ? 'Edit Quiet Time' : 'New Quiet Time'}
           </h1>
         </div>
         <button
@@ -195,11 +194,11 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
       <div className="space-y-8">
 
-        {/* ── Section 1: Sermon Details ── */}
+        {/* ── Section 1: Quiet Time Details ── */}
         <section>
-          <p className={sectionLabelCls}>Sermon Details</p>
+          <p className={sectionLabelCls}>Quiet Time Details</p>
           <p className={sectionHelpCls}>
-            Start with the basics — everything except the title is optional. You can always edit later.
+            Use this for personal devotion, Bible study, or any quiet time with God. Title is the only required field.
           </p>
           <div className="space-y-4">
             <div>
@@ -209,7 +208,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 type="text"
                 value={form.title}
                 onChange={set('title')}
-                placeholder="Sermon title"
+                placeholder="e.g. Morning devotion, John 15"
                 className={inputCls}
               />
             </div>
@@ -223,27 +222,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
               />
             </div>
             <div>
-              <label className={labelCls}>Church</label>
-              <input
-                type="text"
-                value={form.churchName}
-                onChange={set('churchName')}
-                placeholder="Church name"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Preacher / Speaker</label>
-              <input
-                type="text"
-                value={form.preacherName}
-                onChange={set('preacherName')}
-                placeholder="Speaker name"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Main Bible Passage</label>
+              <label className={labelCls}>Bible Passage</label>
               <input
                 type="text"
                 value={form.mainBiblePassage}
@@ -264,42 +243,43 @@ export default function NoteForm({ mode = 'add' }: Props) {
               )}
             </div>
             <div>
-              <label className={labelCls}>Other Scriptures</label>
+              <label className={labelCls}>Devotional Source</label>
               <input
                 type="text"
-                value={form.otherScriptureReferences}
-                onChange={set('otherScriptureReferences')}
-                placeholder="e.g. Romans 8:1, Psalm 23"
+                value={form.devotionalSource}
+                onChange={set('devotionalSource')}
+                placeholder="e.g. Oswald Chambers, My Utmost for His Highest"
                 className={inputCls}
               />
+              <p className={fieldHintCls}>Optional — the devotional book or resource you used.</p>
             </div>
           </div>
         </section>
 
-        {/* ── Section 2: Live Notes ── */}
+        {/* ── Section 2: What I Read ── */}
         <section>
-          <p className={sectionLabelCls}>Live Notes</p>
+          <p className={sectionLabelCls}>What I Read</p>
           <p className={sectionHelpCls}>
-            Write freely while listening. You can come back to reflect later — just save first.
+            Write freely while reading. You can come back to reflect later — just save first.
           </p>
           <div className="space-y-4">
             <div>
-              <label className={labelCls}>Full Notes</label>
+              <label className={labelCls}>Notes from Scripture / Devotional</label>
               <textarea
                 value={form.fullNotes}
                 onChange={set('fullNotes')}
-                rows={7}
-                placeholder="What was shared today..."
+                rows={6}
+                placeholder="What I read, observations, questions…"
                 className={textareaCls}
               />
             </div>
             <div>
-              <label className={labelCls}>Key Quote</label>
+              <label className={labelCls}>Verse or Phrase that Stood Out</label>
               <textarea
                 value={form.keyQuote}
                 onChange={set('keyQuote')}
                 rows={2}
-                placeholder="A line that stuck with you"
+                placeholder="A line that stayed with you"
                 className={textareaCls}
               />
             </div>
@@ -308,22 +288,22 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
         {/* ── Reflection Helper ── */}
         <ReflectionHelper
-          noteType="sermon"
+          noteType="quiet_time"
           onUseTakeaway={text => applyToField('mainTakeaway', text)}
           onUseConviction={text => applyToField('personalConviction', text)}
           onUsePrayer={text => applyToField('prayerPoint', text)}
           onUseActionStep={text => applyToField('weeklyActionStep', text)}
         />
 
-        {/* ── Section 3: My Response ── */}
+        {/* ── Section 3: Reflection ── */}
         <section>
-          <p className={sectionLabelCls}>My Response</p>
+          <p className={sectionLabelCls}>Reflection</p>
           <p className={sectionHelpCls}>
-            After service, use these to capture what this message means for you personally.
+            After reading, use these to capture what this time means for you personally.
           </p>
           <div className="space-y-4">
             <div>
-              <label className={labelCls}>Main Takeaway</label>
+              <label className={labelCls}>What Stood Out Most</label>
               <textarea
                 value={form.mainTakeaway}
                 onChange={set('mainTakeaway')}
@@ -333,16 +313,16 @@ export default function NoteForm({ mode = 'add' }: Props) {
               />
             </div>
             <div>
-              <label className={labelCls}>Personal Conviction</label>
+              <label className={labelCls}>Personal Reflection</label>
               <textarea
                 value={form.personalConviction}
                 onChange={set('personalConviction')}
                 rows={3}
-                placeholder="What did the Spirit highlight for me personally?"
+                placeholder="What did this reveal, correct, encourage, or challenge in me?"
                 className={textareaCls}
               />
               <p className={fieldHintCls}>
-                Something the message revealed, corrected, encouraged, or challenged in you.
+                Something this passage or devotional revealed, corrected, encouraged, or challenged in you.
               </p>
             </div>
           </div>
@@ -352,7 +332,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
         <section>
           <p className={sectionLabelCls}>Prayer &amp; Growth Step</p>
           <p className={sectionHelpCls}>
-            Both are optional — add them when you're ready to reflect on the message.
+            Both are optional — add them when you're ready to respond to what you read.
           </p>
           <div className="space-y-4">
             <div>
@@ -361,18 +341,18 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 value={form.prayerPoint}
                 onChange={set('prayerPoint')}
                 rows={2}
-                placeholder="What will I pray about from this message?"
+                placeholder="What will I pray about from this time?"
                 className={textareaCls}
               />
-              <p className={fieldHintCls}>A prayer response to what you heard.</p>
+              <p className={fieldHintCls}>A prayer response to what you read or felt.</p>
             </div>
             <div>
-              <label className={labelCls}>Weekly Growth Step</label>
+              <label className={labelCls}>Growth Step</label>
               <textarea
                 value={form.weeklyActionStep}
                 onChange={set('weeklyActionStep')}
                 rows={2}
-                placeholder="One thing I will do this week because of this message"
+                placeholder="One thing I will do this week from this time"
                 className={textareaCls}
               />
               <p className={fieldHintCls}>One simple action you can practise this week.</p>
@@ -389,32 +369,59 @@ export default function NoteForm({ mode = 'add' }: Props) {
           </div>
         </section>
 
-        {/* ── Section 5: Organization ── */}
+        {/* ── Section 5: Optional Journal Prompts ── */}
         <section>
-          <p className={sectionLabelCls}>Organization</p>
+          <p className={sectionLabelCls}>Optional Journal Prompts</p>
           <p className={sectionHelpCls}>
-            Category and tags help you find notes later. Both are optional.
+            These are completely optional — use them if they add value to your quiet time journal.
           </p>
           <div className="space-y-4">
             <div>
-              <label className={labelCls}>Topic / Category</label>
-              <select value={form.category} onChange={set('category')} className={inputCls}>
-                <option value="">Select a category</option>
-                {ALL_CATEGORIES.map(c => (
-                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
+              <label className={labelCls}>Gratitude</label>
+              <textarea
+                value={form.gratitude}
+                onChange={set('gratitude')}
+                rows={2}
+                placeholder="What am I thankful for today?"
+                className={textareaCls}
+              />
             </div>
             <div>
-              <label className={labelCls}>Tags</label>
+              <label className={labelCls}>Season / Mood</label>
               <input
                 type="text"
-                value={form.tags}
-                onChange={set('tags')}
-                placeholder="faith, grace, surrender (comma-separated)"
+                value={form.seasonMood}
+                onChange={set('seasonMood')}
+                placeholder="e.g. Tired but trusting, Peaceful, Seeking direction"
                 className={inputCls}
               />
             </div>
+            <div>
+              <label className={labelCls}>Answered Prayer / Testimony</label>
+              <textarea
+                value={form.answeredPrayer}
+                onChange={set('answeredPrayer')}
+                rows={2}
+                placeholder="A prayer God has answered, or something to remember"
+                className={textareaCls}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 6: Organization ── */}
+        <section>
+          <p className={sectionLabelCls}>Organization</p>
+          <p className={sectionHelpCls}>Tags help you find notes later. Optional.</p>
+          <div>
+            <label className={labelCls}>Tags</label>
+            <input
+              type="text"
+              value={form.tags}
+              onChange={set('tags')}
+              placeholder="faith, rest, surrender (comma-separated)"
+              className={inputCls}
+            />
           </div>
         </section>
 
@@ -424,7 +431,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
           disabled={saving}
           className="w-full bg-gold text-forest font-semibold py-4 rounded-2xl text-[15px] disabled:opacity-60 transition-opacity"
         >
-          {saving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Save Sermon Note'}
+          {saving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Save Quiet Time'}
         </button>
       </div>
     </div>

@@ -191,8 +191,8 @@ export default function Settings() {
             </div>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed">
-            A dedicated sermon-notes app for capturing church messages, prayer points, reflections,
-            and weekly action steps — so the Word can take root in everyday life.
+            A focused note-taking app for capturing sermons and personal quiet times — with prayer
+            points, reflections, and growth steps — so the Word can take root in everyday life.
           </p>
         </div>
 

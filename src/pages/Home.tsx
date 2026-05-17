@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Settings, Plus, Target, BookOpen, Heart, Lightbulb } from 'lucide-react'
+import { Settings, BookOpen, Sun, Target, Heart, Lightbulb } from 'lucide-react'
 import { db } from '../db/database'
 import { formatDate } from '../lib/dates'
 import HowSeededWorks from '../components/HowSeededWorks'
@@ -92,21 +92,30 @@ export default function Home() {
         </p>
       </div>
 
-      {/* CTA */}
-      <Link
-        to="/add"
-        className="flex items-center justify-center gap-2 w-full bg-gold text-forest font-semibold py-4 rounded-2xl mb-6 shadow-lg text-[15px]"
-      >
-        <Plus size={18} strokeWidth={2.5} />
-        {isEmpty ? 'Create your first sermon note' : 'New Sermon Note'}
-      </Link>
+      {/* CTAs */}
+      <div className="flex gap-3 mb-6">
+        <Link
+          to="/add/sermon"
+          className="flex-1 flex items-center justify-center gap-2 bg-gold text-forest font-semibold py-3.5 rounded-2xl text-[14px]"
+        >
+          <BookOpen size={16} strokeWidth={2.5} />
+          Sermon Note
+        </Link>
+        <Link
+          to="/add/quiet-time"
+          className="flex-1 flex items-center justify-center gap-2 bg-forest-mid border border-forest-light text-ivory font-semibold py-3.5 rounded-2xl text-[14px]"
+        >
+          <Sun size={16} strokeWidth={2} />
+          Quiet Time
+        </Link>
+      </div>
 
       {isEmpty ? (
         <>
           <div className="mb-6">
             <h2 className="text-[17px] font-semibold text-ivory mb-2">Start here</h2>
             <p className="text-ivory-dim text-sm leading-relaxed">
-              Your first seed starts with one sermon note. Capture the message, reflect on it, pray through it, and choose one growth step for the week.
+              Start with a sermon note from church or a quiet time from your personal devotion. Capture it, reflect on it, pray through it, and choose one growth step for the week.
             </p>
           </div>
           <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
@@ -130,7 +139,7 @@ export default function Home() {
               <p className="text-ivory text-sm leading-relaxed mb-3">
                 {data.reflectionCount === 1
                   ? 'One of your notes has content but is missing a prayer point or growth step.'
-                  : `${data.reflectionCount} sermon notes have content but are missing a prayer point or growth step.`}
+                  : `${data.reflectionCount} notes have content but are missing a prayer point or growth step.`}
               </p>
               {data.reflectionNote && (
                 <Link
@@ -169,12 +178,12 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Recent Sermon */}
+              {/* Recent Note */}
               <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
                 <div className="flex items-center gap-2 mb-2.5">
                   <BookOpen size={14} className="text-gold" strokeWidth={2} />
                   <span className="text-[10px] font-semibold text-gold uppercase tracking-widest">
-                    Recent Sermon
+                    Recent Note
                   </span>
                 </div>
                 {latestNote ? (
@@ -186,7 +195,7 @@ export default function Home() {
                     </p>
                   </Link>
                 ) : (
-                  <p className="text-ivory-muted text-sm">Your most recent sermon will appear here.</p>
+                  <p className="text-ivory-muted text-sm">Your most recent note will appear here.</p>
                 )}
               </div>
 
@@ -222,7 +231,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-forest-mid rounded-2xl p-4 border border-forest-light text-center">
                 <div className="text-2xl font-semibold text-ivory mb-1">{totalNotes}</div>
-                <div className="text-[10px] text-ivory-dim font-medium">Sermons</div>
+                <div className="text-[10px] text-ivory-dim font-medium">Notes</div>
               </div>
               <div className="bg-forest-mid rounded-2xl p-4 border border-forest-light text-center">
                 <div className="text-2xl font-semibold text-ivory mb-1">{activePrayerCount}</div>

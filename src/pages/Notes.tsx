@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Star, BookOpen } from 'lucide-react'
+import { Search, Star, BookOpen, Sun } from 'lucide-react'
 import { db } from '../db/database'
 import { formatDate } from '../lib/dates'
-import { ALL_CATEGORIES, CATEGORY_LABELS } from '../types'
+import { ALL_CATEGORIES, CATEGORY_LABELS, getNoteType } from '../types'
 import type { SermonNote } from '../types'
 
 function noteNeedsReflection(note: SermonNote): boolean {
@@ -12,6 +12,8 @@ function noteNeedsReflection(note: SermonNote): boolean {
 
 const CHIPS = [
   { key: 'all', label: 'All' },
+  { key: 'sermons', label: 'Sermons' },
+  { key: 'quiet_time', label: 'Quiet Time' },
   { key: 'favorites', label: 'Favorites' },
   { key: 'needs_reflection', label: 'Needs Reflection' },
   ...ALL_CATEGORIES.map(c => ({ key: c, label: CATEGORY_LABELS[c] })),
@@ -29,7 +31,11 @@ export default function Notes() {
   const filtered = useMemo(() => {
     let notes = allNotes
 
-    if (filter === 'favorites') {
+    if (filter === 'sermons') {
+      notes = notes.filter(n => getNoteType(n) === 'sermon')
+    } else if (filter === 'quiet_time') {
+      notes = notes.filter(n => getNoteType(n) === 'quiet_time')
+    } else if (filter === 'favorites') {
       notes = notes.filter(n => n.isFavorite)
     } else if (filter === 'needs_reflection') {
       notes = notes.filter(noteNeedsReflection)
@@ -45,10 +51,14 @@ export default function Notes() {
         (n.churchName?.toLowerCase().includes(q) ?? false) ||
         (n.mainBiblePassage?.toLowerCase().includes(q) ?? false) ||
         (n.otherScriptureReferences?.toLowerCase().includes(q) ?? false) ||
+        (n.devotionalSource?.toLowerCase().includes(q) ?? false) ||
         (n.mainTakeaway?.toLowerCase().includes(q) ?? false) ||
         (n.fullNotes?.toLowerCase().includes(q) ?? false) ||
         (n.keyQuote?.toLowerCase().includes(q) ?? false) ||
         (n.personalConviction?.toLowerCase().includes(q) ?? false) ||
+        (n.gratitude?.toLowerCase().includes(q) ?? false) ||
+        (n.seasonMood?.toLowerCase().includes(q) ?? false) ||
+        (n.answeredPrayer?.toLowerCase().includes(q) ?? false) ||
         (n.category ? CATEGORY_LABELS[n.category].toLowerCase().includes(q) : false) ||
         (n.tags?.some(t => t.toLowerCase().includes(q)) ?? false)
       )
@@ -59,17 +69,17 @@ export default function Notes() {
 
   return (
     <div className="px-5 pt-8 pb-4">
-      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-5">Sermon Notes</h1>
+      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-5">Notes</h1>
 
       {/* Search */}
       <div className="relative mb-4">
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ivory-dim pointer-events-none" strokeWidth={2} />
         <input
           type="search"
-          placeholder="Search by title, preacher, passage, tags…"
+          placeholder="Search by title, passage, tags…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          aria-label="Search sermon notes"
+          aria-label="Search notes"
           className="w-full bg-forest-mid border border-forest-light text-ivory rounded-xl pl-10 pr-4 py-3 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold transition-colors"
         />
       </div>
@@ -98,15 +108,15 @@ export default function Notes() {
           <div className="w-16 h-16 rounded-2xl bg-forest-mid border border-forest-light flex items-center justify-center mb-4">
             <BookOpen size={26} className="text-gold" strokeWidth={1.5} />
           </div>
-          <p className="text-ivory text-sm font-medium mb-1">No sermon notes yet</p>
+          <p className="text-ivory text-sm font-medium mb-1">No notes yet</p>
           <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
-            Sermon notes you create will appear here. Start with one message from church, Bible study, or personal reflection.
+            Sermon notes and quiet time entries you create will appear here.
           </p>
           <Link
             to="/add"
             className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
           >
-            Create sermon note
+            Create a note
           </Link>
         </div>
       ) : filtered.length === 0 ? (
@@ -127,6 +137,7 @@ export default function Notes() {
         <div className="space-y-3">
           {filtered.map(note => {
             const reflectionNeeded = noteNeedsReflection(note)
+            const isQT = getNoteType(note) === 'quiet_time'
             return (
               <Link
                 key={note.id}
@@ -141,8 +152,8 @@ export default function Notes() {
                 </div>
                 <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">
                   <span>{formatDate(note.sermonDate)}</span>
-                  {note.preacherName && <span>· {note.preacherName}</span>}
-                  {note.churchName && <span>· {note.churchName}</span>}
+                  {!isQT && note.preacherName && <span>· {note.preacherName}</span>}
+                  {!isQT && note.churchName && <span>· {note.churchName}</span>}
                 </div>
                 {note.mainBiblePassage && (
                   <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
@@ -153,7 +164,13 @@ export default function Notes() {
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  {note.category && (
+                  {isQT && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                      <Sun size={8} strokeWidth={2} />
+                      Quiet Time
+                    </span>
+                  )}
+                  {!isQT && note.category && (
                     <span className="text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
                       {CATEGORY_LABELS[note.category]}
                     </span>

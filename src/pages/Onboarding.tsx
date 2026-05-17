@@ -17,7 +17,7 @@ export default function Onboarding() {
 
   function handleStart() {
     markOnboardingDone()
-    navigate('/add', { replace: true })
+    navigate('/add/sermon', { replace: true })
   }
 
   function handleExplore() {

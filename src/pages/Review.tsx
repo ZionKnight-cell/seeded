@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { TrendingUp, ChevronDown, BookOpen } from 'lucide-react'
+import { TrendingUp, ChevronDown, BookOpen, Sun } from 'lucide-react'
 import { getAllActionSteps, updateActionStatus, updateActionReflection } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
@@ -98,13 +98,13 @@ export default function Review() {
           </div>
           <p className="text-ivory text-sm font-medium mb-1">No growth steps yet</p>
           <p className="text-ivory-dim text-xs leading-relaxed max-w-[240px] mb-6">
-            Growth steps help you practise one thing you heard from a sermon during the week. Add a growth step when creating a sermon note.
+            Growth steps help you practise one thing from a sermon or quiet time during the week.
           </p>
           <Link
             to="/add"
             className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
           >
-            Create sermon note
+            Create a note
           </Link>
         </div>
       ) : filtered.length === 0 ? (
@@ -113,135 +113,149 @@ export default function Review() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(step => (
-            <div key={step.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
-              <div className="p-5">
-                {/* Sermon source */}
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
-                  <Link
-                    to={`/notes/${step.sermonNoteId}`}
-                    className="text-xs text-gold font-medium truncate"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {step.sermonTitle}
-                  </Link>
-                </div>
-
-                {/* Step text */}
-                <p className="text-ivory text-sm leading-relaxed mb-3">{step.text}</p>
-
-                {/* Date + status + expand */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${STATUS_BADGE[step.status]}`}
+          {filtered.map(step => {
+            const isQT = step.noteType === 'quiet_time'
+            return (
+              <div key={step.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
+                <div className="p-5">
+                  {/* Source */}
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    {isQT
+                      ? <Sun size={12} strokeWidth={2} className="text-gold shrink-0" />
+                      : <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
+                    }
+                    <Link
+                      to={`/notes/${step.sermonNoteId}`}
+                      className="text-xs text-gold font-medium truncate"
+                      onClick={e => e.stopPropagation()}
                     >
-                      {FOLLOW_UP_LABELS[step.status]}
-                    </span>
-                    {step.weekStartDate && (
-                      <span className="text-xs text-ivory-dim">{formatDate(step.weekStartDate)}</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setExpandedId(expandedId === step.id ? null : step.id)}
-                    className="text-ivory-dim p-1 -mr-1"
-                    aria-label={expandedId === step.id ? 'Collapse step' : 'Expand step'}
-                  >
-                    <ChevronDown
-                      size={16}
-                      strokeWidth={1.5}
-                      className={`transition-transform ${expandedId === step.id ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {expandedId === step.id && (
-                <div className="border-t border-forest-light px-5 py-4 space-y-4">
-                  {/* Status */}
-                  <div>
-                    <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
-                      How did it go?
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {(Object.entries(FOLLOW_UP_LABELS) as [FollowUpStatus, string][]).map(([k, v]) => (
-                        <button
-                          key={k}
-                          onClick={() => handleStatus(step.id, k)}
-                          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                            step.status === k
-                              ? 'bg-gold text-forest border-gold font-semibold'
-                              : 'border-forest-light text-ivory-dim'
-                          }`}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                    {step.status === 'forgot' && (
-                      <p className="text-xs text-ivory-dim mt-2.5 italic">
-                        It's okay — grace is new every morning. What matters is getting back up.
-                      </p>
+                      {step.sermonTitle}
+                    </Link>
+                    {isQT && (
+                      <span className="text-[9px] font-semibold text-gold/60 border border-gold/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">
+                        Quiet Time
+                      </span>
                     )}
                   </div>
 
-                  {/* Open sermon link */}
-                  <Link
-                    to={`/notes/${step.sermonNoteId}`}
-                    className="flex items-center gap-1.5 text-xs text-gold font-medium"
-                  >
-                    <BookOpen size={12} strokeWidth={2} />
-                    Open sermon
-                  </Link>
+                  {/* Step text */}
+                  <p className="text-ivory text-sm leading-relaxed mb-3">{step.text}</p>
 
-                  {/* Reflection */}
-                  <div>
-                    <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
-                      Reflection
-                    </p>
-                    {editingReflection === step.id ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={reflectionText[step.id] ?? ''}
-                          onChange={e => setReflectionText(t => ({ ...t, [step.id]: e.target.value }))}
-                          rows={3}
-                          placeholder="What did you notice? What changed?"
-                          className="w-full bg-forest border border-forest-light text-ivory rounded-xl px-3 py-2 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold resize-none"
-                          autoFocus
-                        />
-                        <div className="flex gap-2 items-center">
-                          <button
-                            onClick={() => setEditingReflection(null)}
-                            className="text-xs text-ivory-dim px-3 py-1.5"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleSaveReflection(step.id)}
-                            className="text-xs bg-gold text-forest font-semibold px-4 py-1.5 rounded-lg"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setEditingReflection(step.id)}
-                        className="w-full text-left"
+                  {/* Date + status + expand */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${STATUS_BADGE[step.status]}`}
                       >
-                        {step.reflection ? (
-                          <p className="text-ivory-muted text-sm leading-relaxed">{step.reflection}</p>
-                        ) : (
-                          <p className="text-ivory-dim text-sm italic">Tap to add a reflection…</p>
-                        )}
-                      </button>
-                    )}
+                        {FOLLOW_UP_LABELS[step.status]}
+                      </span>
+                      {step.weekStartDate && (
+                        <span className="text-xs text-ivory-dim">{formatDate(step.weekStartDate)}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setExpandedId(expandedId === step.id ? null : step.id)}
+                      className="text-ivory-dim p-1 -mr-1"
+                      aria-label={expandedId === step.id ? 'Collapse step' : 'Expand step'}
+                    >
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={1.5}
+                        className={`transition-transform ${expandedId === step.id ? 'rotate-180' : ''}`}
+                      />
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {expandedId === step.id && (
+                  <div className="border-t border-forest-light px-5 py-4 space-y-4">
+                    {/* Status */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
+                        How did it go?
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(Object.entries(FOLLOW_UP_LABELS) as [FollowUpStatus, string][]).map(([k, v]) => (
+                          <button
+                            key={k}
+                            onClick={() => handleStatus(step.id, k)}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                              step.status === k
+                                ? 'bg-gold text-forest border-gold font-semibold'
+                                : 'border-forest-light text-ivory-dim'
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                      {step.status === 'forgot' && (
+                        <p className="text-xs text-ivory-dim mt-2.5 italic">
+                          It's okay — grace is new every morning. What matters is getting back up.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Open note link */}
+                    <Link
+                      to={`/notes/${step.sermonNoteId}`}
+                      className="flex items-center gap-1.5 text-xs text-gold font-medium"
+                    >
+                      {isQT
+                        ? <Sun size={12} strokeWidth={2} />
+                        : <BookOpen size={12} strokeWidth={2} />
+                      }
+                      Open note
+                    </Link>
+
+                    {/* Reflection */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
+                        Reflection
+                      </p>
+                      {editingReflection === step.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={reflectionText[step.id] ?? ''}
+                            onChange={e => setReflectionText(t => ({ ...t, [step.id]: e.target.value }))}
+                            rows={3}
+                            placeholder="What did you notice? What changed?"
+                            className="w-full bg-forest border border-forest-light text-ivory rounded-xl px-3 py-2 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold resize-none"
+                            autoFocus
+                          />
+                          <div className="flex gap-2 items-center">
+                            <button
+                              onClick={() => setEditingReflection(null)}
+                              className="text-xs text-ivory-dim px-3 py-1.5"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleSaveReflection(step.id)}
+                              className="text-xs bg-gold text-forest font-semibold px-4 py-1.5 rounded-lg"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingReflection(step.id)}
+                          className="w-full text-left"
+                        >
+                          {step.reflection ? (
+                            <p className="text-ivory-muted text-sm leading-relaxed">{step.reflection}</p>
+                          ) : (
+                            <p className="text-ivory-dim text-sm italic">Tap to add a reflection…</p>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

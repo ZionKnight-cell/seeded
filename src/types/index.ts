@@ -7,6 +7,8 @@ export type FollowUpStatus =
 
 export type PrayerStatus = 'active' | 'answered' | 'archived'
 
+export type NoteType = 'sermon' | 'quiet_time'
+
 export type SermonCategory =
   | 'faith'
   | 'prayer'
@@ -30,22 +32,30 @@ export interface PrayerUpdate {
 
 export interface SermonNote {
   id: string
+  noteType?: NoteType           // undefined treated as 'sermon' — backward compatible
   title: string
   sermonDate: string
+  // Sermon-specific fields
   churchName?: string
   preacherName?: string
-  mainBiblePassage?: string
   otherScriptureReferences?: string
   category?: SermonCategory
-  tags?: string[]
-  fullNotes?: string
   keyQuote?: string
-  mainTakeaway?: string
-  personalConviction?: string
+  // Shared fields (labels differ per noteType in the UI)
+  mainBiblePassage?: string
+  tags?: string[]
+  fullNotes?: string            // sermon: live notes; quiet time: what I read
+  mainTakeaway?: string         // sermon: main takeaway; quiet time: what stood out
+  personalConviction?: string   // sermon: personal conviction; quiet time: personal reflection
   prayerPoint?: string
   weeklyActionStep?: string
   followUpStatus: FollowUpStatus
   isFavorite: boolean
+  // Quiet Time optional journal prompts
+  devotionalSource?: string
+  gratitude?: string
+  seasonMood?: string
+  answeredPrayer?: string
   createdAt: string
   updatedAt: string
 }
@@ -54,6 +64,7 @@ export interface PrayerPoint {
   id: string
   sermonNoteId: string
   sermonTitle: string
+  noteType?: NoteType           // undefined treated as 'sermon' — backward compatible
   text: string
   status: PrayerStatus
   updates: PrayerUpdate[]
@@ -65,6 +76,7 @@ export interface ActionStep {
   id: string
   sermonNoteId: string
   sermonTitle: string
+  noteType?: NoteType           // undefined treated as 'sermon' — backward compatible
   text: string
   status: FollowUpStatus
   weekStartDate?: string
@@ -79,6 +91,20 @@ export interface AppSettings {
   id: string
   dateFormat: string
   theme: string
+}
+
+export function getNoteType(note: { noteType?: NoteType }): NoteType {
+  return note.noteType ?? 'sermon'
+}
+
+export const NOTE_TYPE_LABELS: Record<NoteType, string> = {
+  sermon: 'Sermon Note',
+  quiet_time: 'Quiet Time',
+}
+
+export const NOTE_TYPE_SHORT: Record<NoteType, string> = {
+  sermon: 'Sermon',
+  quiet_time: 'Quiet Time',
 }
 
 export const FOLLOW_UP_LABELS: Record<FollowUpStatus, string> = {

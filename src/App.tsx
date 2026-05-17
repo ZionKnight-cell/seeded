@@ -5,7 +5,9 @@ import Home from './pages/Home'
 import Notes from './pages/Notes'
 import NoteDetail from './pages/NoteDetail'
 import NoteForm from './pages/NoteForm'
+import EditNote from './pages/EditNote'
 import AddNote from './pages/AddNote'
+import QuietTimeForm from './pages/QuietTimeForm'
 import Prayer from './pages/Prayer'
 import Review from './pages/Review'
 import Settings from './pages/Settings'
@@ -25,8 +27,10 @@ export default function App() {
             <Route index element={<HomeOrOnboarding />} />
             <Route path="/notes" element={<Notes />} />
             <Route path="/notes/:id" element={<NoteDetail />} />
-            <Route path="/notes/:id/edit" element={<NoteForm mode="edit" />} />
+            <Route path="/notes/:id/edit" element={<EditNote />} />
             <Route path="/add" element={<AddNote />} />
+            <Route path="/add/sermon" element={<NoteForm mode="add" />} />
+            <Route path="/add/quiet-time" element={<QuietTimeForm mode="add" />} />
             <Route path="/prayer" element={<Prayer />} />
             <Route path="/review" element={<Review />} />
             <Route path="/settings" element={<Settings />} />

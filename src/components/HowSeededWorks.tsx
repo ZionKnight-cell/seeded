@@ -4,7 +4,7 @@ const STEPS = [
   {
     icon: BookOpen,
     title: 'Capture',
-    body: 'Write the sermon title, passage, preacher, and notes during or after service.',
+    body: 'Write a sermon note while listening, or a quiet time note from your personal devotion or Bible reading.',
   },
   {
     icon: Lightbulb,

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ChevronDown, Lightbulb } from 'lucide-react'
+import type { NoteType } from '../types'
 
-const PROMPTS = [
+const SERMON_PROMPTS = [
   {
     id: 'takeaway' as const,
     question: 'What stood out most from this message?',
@@ -28,9 +29,37 @@ const PROMPTS = [
   },
 ]
 
-type PromptId = (typeof PROMPTS)[number]['id']
+const QUIET_TIME_PROMPTS = [
+  {
+    id: 'takeaway' as const,
+    question: 'What stood out from this passage or devotional?',
+    hint: 'Something that surprised, challenged, encouraged, or stayed with you.',
+    action: 'Use as main takeaway',
+  },
+  {
+    id: 'conviction' as const,
+    question: 'What did this reveal, correct, encourage, or challenge in you?',
+    hint: 'A habit, attitude, relationship, or decision it speaks into.',
+    action: 'Use as personal reflection',
+  },
+  {
+    id: 'prayer' as const,
+    question: 'What would you like to bring to God from this time?',
+    hint: 'A need, gratitude, a request, or an area to surrender.',
+    action: 'Use as prayer point',
+  },
+  {
+    id: 'actionStep' as const,
+    question: 'What is one faithful step you can take from this?',
+    hint: 'Keep it small and concrete — not a resolution, just one step.',
+    action: 'Use as growth step',
+  },
+]
+
+type PromptId = 'takeaway' | 'conviction' | 'prayer' | 'actionStep'
 
 interface Props {
+  noteType?: NoteType
   onUseTakeaway: (text: string) => void
   onUseConviction: (text: string) => void
   onUsePrayer: (text: string) => void
@@ -38,6 +67,7 @@ interface Props {
 }
 
 export default function ReflectionHelper({
+  noteType = 'sermon',
   onUseTakeaway,
   onUseConviction,
   onUsePrayer,
@@ -51,6 +81,8 @@ export default function ReflectionHelper({
     actionStep: '',
   })
   const [confirmed, setConfirmed] = useState<PromptId | null>(null)
+
+  const prompts = noteType === 'quiet_time' ? QUIET_TIME_PROMPTS : SERMON_PROMPTS
 
   const handlers: Record<PromptId, (text: string) => void> = {
     takeaway: onUseTakeaway,
@@ -67,6 +99,10 @@ export default function ReflectionHelper({
     setTimeout(() => setConfirmed(null), 1500)
   }
 
+  const subtitle = noteType === 'quiet_time'
+    ? 'Guided questions to turn this quiet time into prayer and one growth step'
+    : 'Guided questions to shape your notes into prayer and action'
+
   return (
     <div className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
       <button
@@ -81,9 +117,7 @@ export default function ReflectionHelper({
           </div>
           <div>
             <p className="text-sm font-medium text-ivory">Reflection Helper</p>
-            <p className="text-xs text-ivory-dim mt-0.5">
-              Guided questions to shape your notes into prayer and action
-            </p>
+            <p className="text-xs text-ivory-dim mt-0.5">{subtitle}</p>
           </div>
         </div>
         <ChevronDown
@@ -100,7 +134,7 @@ export default function ReflectionHelper({
             an answer into the form. You can always edit the fields directly too.
           </p>
 
-          {PROMPTS.map(prompt => {
+          {prompts.map(prompt => {
             const value = answers[prompt.id]
             const isConfirmed = confirmed === prompt.id
             return (
@@ -109,9 +143,7 @@ export default function ReflectionHelper({
                 <p className="text-xs text-ivory-dim mb-2 leading-relaxed">{prompt.hint}</p>
                 <textarea
                   value={value}
-                  onChange={e =>
-                    setAnswers(a => ({ ...a, [prompt.id]: e.target.value }))
-                  }
+                  onChange={e => setAnswers(a => ({ ...a, [prompt.id]: e.target.value }))}
                   rows={2}
                   placeholder="Your thoughts…"
                   className="w-full bg-forest border border-forest-light text-ivory rounded-xl px-3 py-2.5 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold resize-none transition-colors"

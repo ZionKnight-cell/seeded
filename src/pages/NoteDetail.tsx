@@ -6,6 +6,7 @@ import {
   Trash2,
   Star,
   BookOpen,
+  Sun,
   Heart,
   Target,
   Lightbulb,
@@ -15,7 +16,7 @@ import { getSermonNote, deleteSermonNote, updateSermonNote } from '../db/databas
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
 import { buildBibleSearchUrl } from '../lib/bibleLinks'
-import { CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
+import { CATEGORY_LABELS, FOLLOW_UP_LABELS, getNoteType } from '../types'
 import type { SermonNote, FollowUpStatus } from '../types'
 
 function Card({ label, children }: { label: string; children: React.ReactNode }) {
@@ -89,6 +90,9 @@ export default function NoteDetail() {
     )
   }
 
+  const noteType = getNoteType(note)
+  const isQT = noteType === 'quiet_time'
+
   return (
     <div className="px-5 pt-6 pb-10">
       {/* Header */}
@@ -128,19 +132,27 @@ export default function NoteDetail() {
         </h1>
         <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-ivory-dim">
           {note.sermonDate && <span>{formatDate(note.sermonDate)}</span>}
-          {note.churchName && <span>· {note.churchName}</span>}
-          {note.preacherName && <span>· {note.preacherName}</span>}
+          {!isQT && note.churchName && <span>· {note.churchName}</span>}
+          {!isQT && note.preacherName && <span>· {note.preacherName}</span>}
         </div>
-        {note.category && (
-          <span className="inline-block mt-2.5 text-[10px] font-semibold text-gold bg-forest-light px-3 py-1 rounded-full uppercase tracking-widest">
-            {CATEGORY_LABELS[note.category]}
-          </span>
-        )}
+        <div className="flex flex-wrap gap-2 mt-2.5">
+          {isQT && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold bg-forest-light px-3 py-1 rounded-full uppercase tracking-widest">
+              <Sun size={9} strokeWidth={2} />
+              Quiet Time
+            </span>
+          )}
+          {!isQT && note.category && (
+            <span className="inline-block text-[10px] font-semibold text-gold bg-forest-light px-3 py-1 rounded-full uppercase tracking-widest">
+              {CATEGORY_LABELS[note.category]}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3">
         {/* Scripture */}
-        {(note.mainBiblePassage || note.otherScriptureReferences) && (
+        {(note.mainBiblePassage || (!isQT && note.otherScriptureReferences)) && (
           <Card label="Scripture">
             <div className="flex items-start gap-2">
               <BookOpen size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
@@ -159,7 +171,7 @@ export default function NoteDetail() {
                     </a>
                   </>
                 )}
-                {note.otherScriptureReferences && (
+                {!isQT && note.otherScriptureReferences && (
                   <p className="text-ivory-muted text-sm mt-2">{note.otherScriptureReferences}</p>
                 )}
               </div>
@@ -167,23 +179,30 @@ export default function NoteDetail() {
           </Card>
         )}
 
+        {/* Devotional Source (QT only) */}
+        {isQT && note.devotionalSource && (
+          <Card label="Devotional Source">
+            <p className="text-ivory text-sm leading-relaxed">{note.devotionalSource}</p>
+          </Card>
+        )}
+
         {/* Full Notes */}
         {note.fullNotes && (
-          <Card label="Notes">
+          <Card label={isQT ? 'What I Read' : 'Notes'}>
             <p className="text-ivory text-sm leading-relaxed whitespace-pre-wrap">{note.fullNotes}</p>
           </Card>
         )}
 
         {/* Key Quote */}
         {note.keyQuote && (
-          <Card label="Key Quote">
+          <Card label={isQT ? 'Verse or Phrase that Stood Out' : 'Key Quote'}>
             <p className="text-ivory text-sm leading-relaxed italic">"{note.keyQuote}"</p>
           </Card>
         )}
 
         {/* Takeaway */}
         {note.mainTakeaway && (
-          <Card label="Main Takeaway">
+          <Card label={isQT ? 'What Stood Out Most' : 'Main Takeaway'}>
             <div className="flex items-start gap-2">
               <Lightbulb size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
               <p className="text-ivory text-sm leading-relaxed">{note.mainTakeaway}</p>
@@ -191,14 +210,14 @@ export default function NoteDetail() {
           </Card>
         )}
 
-        {/* Conviction */}
+        {/* Conviction / Personal Reflection */}
         {note.personalConviction && (
-          <Card label="Personal Conviction">
+          <Card label={isQT ? 'Personal Reflection' : 'Personal Conviction'}>
             <p className="text-ivory text-sm leading-relaxed">{note.personalConviction}</p>
           </Card>
         )}
 
-        {/* Reflection prompt — shown when there are notes but reflection is incomplete */}
+        {/* Reflection prompt */}
         {needsReflection(note) && (
           <div className="bg-forest-mid rounded-2xl p-5 border border-gold/20">
             <div className="flex items-start gap-3">
@@ -206,8 +225,9 @@ export default function NoteDetail() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ivory mb-1">Reflection not finished yet</p>
                 <p className="text-xs text-ivory-dim leading-relaxed mb-3">
-                  This note has sermon notes but is missing a prayer point or growth step. Use the
-                  Reflection Helper to complete it.
+                  {isQT
+                    ? 'This quiet time note has content but is missing a prayer point or growth step. Use the Reflection Helper to complete it.'
+                    : 'This note has sermon notes but is missing a prayer point or growth step. Use the Reflection Helper to complete it.'}
                 </p>
                 <Link
                   to={`/notes/${note.id}/edit`}
@@ -232,7 +252,7 @@ export default function NoteDetail() {
 
         {/* Action Step */}
         {note.weeklyActionStep && (
-          <Card label="Weekly Growth Step">
+          <Card label="Growth Step">
             <div className="flex items-start gap-2 mb-4">
               <Target size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
               <p className="text-ivory text-sm leading-relaxed">{note.weeklyActionStep}</p>
@@ -254,6 +274,32 @@ export default function NoteDetail() {
                   {v}
                 </button>
               ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Optional Journal Prompts (QT only) */}
+        {isQT && (note.gratitude || note.seasonMood || note.answeredPrayer) && (
+          <Card label="Journal">
+            <div className="space-y-3">
+              {note.gratitude && (
+                <div>
+                  <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-1">Gratitude</p>
+                  <p className="text-ivory text-sm leading-relaxed">{note.gratitude}</p>
+                </div>
+              )}
+              {note.seasonMood && (
+                <div>
+                  <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-1">Season / Mood</p>
+                  <p className="text-ivory text-sm leading-relaxed">{note.seasonMood}</p>
+                </div>
+              )}
+              {note.answeredPrayer && (
+                <div>
+                  <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-1">Answered Prayer</p>
+                  <p className="text-ivory text-sm leading-relaxed">{note.answeredPrayer}</p>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -285,7 +331,7 @@ export default function NoteDetail() {
           <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold text-ivory mb-2">Delete this note?</h2>
             <p className="text-ivory-dim text-sm mb-6 leading-relaxed">
-              This will permanently delete "{note.title}" along with any linked prayer points and action steps.
+              This will permanently delete "{note.title}" along with any linked prayer points and growth steps.
             </p>
             <div className="flex gap-3">
               <button
