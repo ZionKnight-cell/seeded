@@ -1,0 +1,22 @@
+{
+  "name": "Seeded \u2014 Sermon Notes That Grow Into Action",
+  "short_name": "Seeded",
+  "description": "A dedicated sermon-notes app for capturing church messages, prayer points, reflections, and weekly action steps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F2F24",
+  "theme_color": "#0F2F24",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

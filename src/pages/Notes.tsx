@@ -1,0 +1,153 @@
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { Search, Star, BookOpen } from 'lucide-react'
+import { db } from '../db/database'
+import { formatDate } from '../lib/dates'
+import { ALL_CATEGORIES, CATEGORY_LABELS } from '../types'
+import type { SermonNote } from '../types'
+
+const CHIPS = [
+  { key: 'all', label: 'All' },
+  { key: 'favorites', label: 'Favourites' },
+  ...ALL_CATEGORIES.map(c => ({ key: c, label: CATEGORY_LABELS[c] })),
+]
+
+export default function Notes() {
+  const [allNotes, setAllNotes] = useState<SermonNote[]>([])
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+
+  useEffect(() => {
+    db.sermonNotes.orderBy('sermonDate').reverse().toArray().then(setAllNotes)
+  }, [])
+
+  const filtered = useMemo(() => {
+    let notes = allNotes
+
+    if (filter === 'favorites') {
+      notes = notes.filter(n => n.isFavorite)
+    } else if (filter !== 'all') {
+      notes = notes.filter(n => n.category === filter)
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      notes = notes.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        (n.preacherName?.toLowerCase().includes(q) ?? false) ||
+        (n.churchName?.toLowerCase().includes(q) ?? false) ||
+        (n.mainBiblePassage?.toLowerCase().includes(q) ?? false) ||
+        (n.otherScriptureReferences?.toLowerCase().includes(q) ?? false) ||
+        (n.mainTakeaway?.toLowerCase().includes(q) ?? false) ||
+        (n.fullNotes?.toLowerCase().includes(q) ?? false) ||
+        (n.keyQuote?.toLowerCase().includes(q) ?? false) ||
+        (n.personalConviction?.toLowerCase().includes(q) ?? false) ||
+        (n.category ? CATEGORY_LABELS[n.category].toLowerCase().includes(q) : false) ||
+        (n.tags?.some(t => t.toLowerCase().includes(q)) ?? false)
+      )
+    }
+
+    return notes
+  }, [allNotes, search, filter])
+
+  return (
+    <div className="px-5 pt-8 pb-4">
+      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-5">Sermon Notes</h1>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ivory-dim pointer-events-none" strokeWidth={2} />
+        <input
+          type="search"
+          placeholder="Search by title, preacher, passage, tags…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          aria-label="Search sermon notes"
+          className="w-full bg-forest-mid border border-forest-light text-ivory rounded-xl pl-10 pr-4 py-3 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold transition-colors"
+        />
+      </div>
+
+      {/* Filter Chips */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-5 px-5">
+        {CHIPS.map(chip => (
+          <button
+            key={chip.key}
+            onClick={() => setFilter(chip.key)}
+            aria-pressed={filter === chip.key}
+            className={`shrink-0 text-xs px-4 py-1.5 rounded-full border transition-colors ${
+              filter === chip.key
+                ? 'bg-gold text-forest border-gold font-semibold'
+                : 'border-forest-light text-ivory-dim'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* States */}
+      {allNotes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-forest-mid border border-forest-light flex items-center justify-center mb-4">
+            <BookOpen size={26} className="text-gold" strokeWidth={1.5} />
+          </div>
+          <p className="text-ivory text-sm font-medium mb-1">No sermon notes yet</p>
+          <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px] mb-6">
+            Start capturing messages that move you.
+          </p>
+          <Link
+            to="/add"
+            className="bg-gold text-forest text-sm font-semibold px-6 py-2.5 rounded-xl"
+          >
+            Add First Note
+          </Link>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-ivory-muted text-sm">No notes match your search.</p>
+          <button
+            onClick={() => { setSearch(''); setFilter('all') }}
+            className="mt-3 text-gold text-xs font-medium"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(note => (
+            <Link
+              key={note.id}
+              to={`/notes/${note.id}`}
+              className="block bg-forest-mid rounded-2xl p-5 border border-forest-light active:opacity-80 transition-opacity"
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
+                {note.isFavorite && (
+                  <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favourite" />
+                )}
+              </div>
+              <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">
+                <span>{formatDate(note.sermonDate)}</span>
+                {note.preacherName && <span>· {note.preacherName}</span>}
+                {note.churchName && <span>· {note.churchName}</span>}
+              </div>
+              {note.mainBiblePassage && (
+                <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
+              )}
+              {note.mainTakeaway && (
+                <p className="text-ivory-muted text-xs leading-relaxed line-clamp-2">
+                  {note.mainTakeaway}
+                </p>
+              )}
+              {note.category && (
+                <span className="inline-block mt-3 text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                  {CATEGORY_LABELS[note.category]}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
