@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, ChevronDown, Plus } from 'lucide-react'
+import { Heart, ChevronDown, Plus, BookOpen } from 'lucide-react'
 import { getAllPrayerPoints, updatePrayerStatus, addPrayerUpdate } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
@@ -18,6 +18,13 @@ const STATUS_BADGE: Record<PrayerStatus, string> = {
   active: 'text-gold border-gold/40 bg-gold/10',
   answered: 'text-emerald-400 border-emerald-600/40 bg-emerald-400/10',
   archived: 'text-ivory-dim border-forest-light',
+}
+
+const FILTER_EMPTY: Record<PrayerStatus | 'all', string> = {
+  all: 'No prayer points yet.',
+  active: 'No active prayer points right now.',
+  answered: 'Mark a prayer as Answered when God responds to it.',
+  archived: 'Archive prayers here to keep your active list focused.',
 }
 
 export default function Prayer() {
@@ -61,6 +68,7 @@ export default function Prayer() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
+            aria-pressed={filter === f.key}
             className={`text-xs px-4 py-1.5 rounded-full border transition-colors ${
               filter === f.key
                 ? 'bg-gold text-forest border-gold font-semibold'
@@ -77,20 +85,33 @@ export default function Prayer() {
           <div className="w-16 h-16 rounded-2xl bg-forest-mid border border-forest-light flex items-center justify-center mb-4">
             <Heart size={26} className="text-gold" strokeWidth={1.5} />
           </div>
-          <p className="text-ivory-muted text-sm font-medium mb-1">No prayer items yet</p>
+          <p className="text-ivory text-sm font-medium mb-1">No prayer points yet</p>
           <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px]">
             Prayer points from your sermon notes will appear here.
           </p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-ivory-muted text-sm">No {filter} prayer items.</p>
+          <p className="text-ivory-muted text-sm">{FILTER_EMPTY[filter]}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(prayer => (
             <div key={prayer.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
               <div className="p-5">
+                {/* Sermon source */}
+                <div className="flex items-center gap-1.5 mb-3">
+                  <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
+                  <Link
+                    to={`/notes/${prayer.sermonNoteId}`}
+                    className="text-xs text-gold font-medium truncate"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {prayer.sermonTitle}
+                  </Link>
+                </div>
+
+                {/* Prayer text + status badge */}
                 <div className="flex items-start gap-3 mb-3">
                   <p className="text-ivory text-sm leading-relaxed flex-1">{prayer.text}</p>
                   <span
@@ -99,21 +120,14 @@ export default function Prayer() {
                     {PRAYER_STATUS_LABELS[prayer.status]}
                   </span>
                 </div>
+
+                {/* Date + expand */}
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-ivory-dim">
-                    <Link
-                      to={`/notes/${prayer.sermonNoteId}`}
-                      className="text-gold font-medium"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {prayer.sermonTitle}
-                    </Link>
-                    <span className="ml-2">{formatDate(prayer.createdAt)}</span>
-                  </p>
+                  <p className="text-xs text-ivory-dim">{formatDate(prayer.createdAt)}</p>
                   <button
                     onClick={() => setExpandedId(expandedId === prayer.id ? null : prayer.id)}
                     className="text-ivory-dim p-1 -mr-1"
-                    aria-label="Expand"
+                    aria-label={expandedId === prayer.id ? 'Collapse' : 'Expand prayer'}
                   >
                     <ChevronDown
                       size={16}
@@ -148,11 +162,20 @@ export default function Prayer() {
                     </div>
                   </div>
 
+                  {/* Open sermon link */}
+                  <Link
+                    to={`/notes/${prayer.sermonNoteId}`}
+                    className="flex items-center gap-1.5 text-xs text-gold font-medium"
+                  >
+                    <BookOpen size={12} strokeWidth={2} />
+                    Open sermon
+                  </Link>
+
                   {/* Updates */}
                   {prayer.updates.length > 0 && (
                     <div>
                       <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
-                        Updates
+                        Journal
                       </p>
                       <div className="space-y-2">
                         {prayer.updates.map(u => (
@@ -197,7 +220,7 @@ export default function Prayer() {
                       className="flex items-center gap-1.5 text-xs text-gold font-medium"
                     >
                       <Plus size={13} strokeWidth={2.5} />
-                      Add update
+                      Add journal entry
                     </button>
                   )}
                 </div>

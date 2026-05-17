@@ -48,7 +48,7 @@ export default function NoteDetail() {
     const next = !note.isFavorite
     await updateSermonNote(note.id, { isFavorite: next })
     setNote({ ...note, isFavorite: next })
-    showToast(next ? 'Added to favourites' : 'Removed from favourites')
+    showToast(next ? 'Added to favorites' : 'Removed from favorites')
   }
 
   async function handleStatus(status: FollowUpStatus) {
@@ -94,7 +94,7 @@ export default function NoteDetail() {
           <button
             onClick={handleFavorite}
             className={`p-1.5 transition-colors ${note.isFavorite ? 'text-gold' : 'text-ivory-dim'}`}
-            aria-label="Toggle favourite"
+            aria-label="Toggle favorite"
           >
             <Star size={20} strokeWidth={1.5} fill={note.isFavorite ? 'currentColor' : 'none'} />
           </button>

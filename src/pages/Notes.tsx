@@ -8,7 +8,7 @@ import type { SermonNote } from '../types'
 
 const CHIPS = [
   { key: 'all', label: 'All' },
-  { key: 'favorites', label: 'Favourites' },
+  { key: 'favorites', label: 'Favorites' },
   ...ALL_CATEGORIES.map(c => ({ key: c, label: CATEGORY_LABELS[c] })),
 ]
 
@@ -123,7 +123,7 @@ export default function Notes() {
               <div className="flex items-start justify-between gap-3 mb-2">
                 <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
                 {note.isFavorite && (
-                  <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favourite" />
+                  <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favorite" />
                 )}
               </div>
               <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">

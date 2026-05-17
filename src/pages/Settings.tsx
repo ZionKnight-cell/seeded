@@ -1,8 +1,13 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Shield, Calendar, Info, Trash2, Download, Upload, Wrench } from 'lucide-react'
+import {
+  ChevronLeft, Shield, Calendar, Info, Trash2,
+  Download, Upload, Wrench, Wifi, Smartphone,
+} from 'lucide-react'
 import { clearAllData, exportAllData, importAllData, repairData } from '../db/database'
 import { useToast } from '../components/Toast'
+import { usePWA } from '../hooks/usePWA'
+import { APP_VERSION } from '../lib/version'
 import { formatDate } from '../lib/dates'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
 
@@ -24,6 +29,7 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function Settings() {
   const { showToast } = useToast()
+  const { isOnline, canInstall, triggerInstall } = usePWA()
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showImportConfirm, setShowImportConfirm] = useState(false)
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
@@ -123,7 +129,7 @@ export default function Settings() {
             </div>
             <div>
               <p className="text-sm font-medium text-ivory">Seeded</p>
-              <p className="text-xs text-ivory-dim mt-0.5">Version 0.1.0</p>
+              <p className="text-xs text-ivory-dim mt-0.5">Version {APP_VERSION}</p>
             </div>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed">
@@ -140,10 +146,55 @@ export default function Settings() {
             <p className="text-sm font-medium text-ivory">Local-only Storage</p>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed">
-            All your notes are stored on your device using IndexedDB. Nothing is sent to any server.
+            All your notes are stored on this device using IndexedDB. Nothing is sent to any server.
             Your reflections are yours alone.
           </p>
         </div>
+      </div>
+
+      {/* App & Offline */}
+      <SectionLabel>App &amp; Offline</SectionLabel>
+      <div className="space-y-3 mb-7">
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+              <Wifi size={17} className="text-gold" strokeWidth={1.5} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ivory">Offline Support</p>
+              <p className={`text-xs mt-0.5 font-medium ${isOnline ? 'text-emerald-400' : 'text-gold'}`}>
+                {isOnline ? 'Online' : 'Offline'}
+              </p>
+            </div>
+          </div>
+          <p className="text-ivory-dim text-sm leading-relaxed">
+            After your first visit, Seeded loads and works without an internet connection.
+            Your notes are always available on this device.
+          </p>
+          <p className="text-ivory-dim text-sm leading-relaxed mt-2">
+            Before clearing browser data or switching devices, export a backup from Backup &amp; Restore below.
+          </p>
+        </div>
+
+        {canInstall && (
+          <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+                <Smartphone size={17} className="text-gold" strokeWidth={1.5} />
+              </div>
+              <p className="text-sm font-medium text-ivory">Install App</p>
+            </div>
+            <p className="text-ivory-dim text-sm leading-relaxed mb-4">
+              Add Seeded to your home screen for a full-screen experience, even without internet.
+            </p>
+            <button
+              onClick={triggerInstall}
+              className="text-sm text-gold font-medium border border-gold/40 px-4 py-2 rounded-xl"
+            >
+              Add to Home Screen
+            </button>
+          </div>
+        )}
       </div>
 
       {/* App Data */}
@@ -173,7 +224,7 @@ export default function Settings() {
             <p className="text-sm font-medium text-ivory">Export Data</p>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed mb-4">
-            Download all your sermon notes, prayer points, and action steps as a JSON backup file.
+            Download all your sermon notes, prayer points, and growth steps as a JSON backup file.
           </p>
           <button
             onClick={handleExport}
@@ -191,7 +242,7 @@ export default function Settings() {
             <p className="text-sm font-medium text-ivory">Import Data</p>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed mb-4">
-            Restore from a Seeded backup JSON file. Your existing data will be kept — only matching IDs will be updated.
+            Restore from a Seeded backup JSON file. Your existing data will be kept — only records with matching IDs will be updated.
           </p>
           <input
             ref={fileInputRef}
@@ -220,7 +271,7 @@ export default function Settings() {
             <p className="text-sm font-medium text-ivory">Repair Local Data</p>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed mb-4">
-            Scan for and remove orphaned prayer points or action steps, and sync sermon titles into linked records.
+            Scan for orphaned prayer points or growth steps and sync sermon titles into linked records.
           </p>
           <button
             onClick={handleRepair}
@@ -243,7 +294,7 @@ export default function Settings() {
           ) : (
             <>
               <p className="text-ivory-dim text-sm leading-relaxed mb-4">
-                Permanently delete all sermon notes, prayer points, and action steps from this device. This cannot be undone.
+                Permanently delete all sermon notes, prayer points, and growth steps from this device. This cannot be undone.
               </p>
               <button
                 onClick={() => setShowClearConfirm(true)}
@@ -264,7 +315,7 @@ export default function Settings() {
           <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold text-ivory mb-2">Clear all data?</h2>
             <p className="text-ivory-dim text-sm mb-6 leading-relaxed">
-              This will permanently delete all your sermon notes, prayer points, and action steps from this device.
+              This will permanently delete all your sermon notes, prayer points, and growth steps from this device.
               This cannot be undone.
             </p>
             <div className="flex gap-3">
@@ -300,7 +351,7 @@ export default function Settings() {
             <ul className="text-ivory text-sm space-y-1 mb-4 pl-1">
               <li>· {importPreview.sermonNotes.length} sermon note{importPreview.sermonNotes.length !== 1 ? 's' : ''}</li>
               <li>· {importPreview.prayerPoints.length} prayer point{importPreview.prayerPoints.length !== 1 ? 's' : ''}</li>
-              <li>· {importPreview.actionSteps.length} action step{importPreview.actionSteps.length !== 1 ? 's' : ''}</li>
+              <li>· {importPreview.actionSteps.length} growth step{importPreview.actionSteps.length !== 1 ? 's' : ''}</li>
             </ul>
             <p className="text-ivory-dim text-xs mb-6 leading-relaxed">
               This will <strong className="text-ivory">merge</strong> into your existing data. Records with matching IDs will be updated. No existing data will be deleted.

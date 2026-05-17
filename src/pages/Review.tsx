@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { TrendingUp, ChevronDown } from 'lucide-react'
+import { TrendingUp, ChevronDown, BookOpen } from 'lucide-react'
 import { getAllActionSteps, updateActionStatus, updateActionReflection } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
@@ -22,6 +22,15 @@ const STATUS_BADGE: Record<FollowUpStatus, string> = {
   done: 'text-emerald-400 border-emerald-600/40 bg-emerald-400/10',
   still_working: 'text-gold border-gold/40 bg-gold/10',
   forgot: 'text-ivory-dim border-forest-light',
+}
+
+const FILTER_EMPTY: Record<FollowUpStatus | 'all', string> = {
+  all: 'No growth steps yet.',
+  not_started: 'No new growth steps waiting.',
+  in_progress: 'No steps currently in progress.',
+  still_working: 'No steps still being worked on.',
+  done: 'No completed steps yet — keep going.',
+  forgot: 'Nothing marked as forgotten.',
 }
 
 export default function Review() {
@@ -59,17 +68,18 @@ export default function Review() {
 
   return (
     <div className="px-5 pt-8 pb-4">
-      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-1">Review</h1>
+      <h1 className="text-2xl font-semibold text-ivory tracking-tight mb-1">Weekly Review</h1>
       <p className="text-ivory-dim text-sm mb-5 leading-relaxed">
-        Reflect on what you heard and how you're living it out.
+        Hearing is the beginning. Growth happens when the Word is practiced.
       </p>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 -mx-5 px-5" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-5 px-5">
         {FILTERS.map(f => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
+            aria-pressed={filter === f.key}
             className={`shrink-0 text-xs px-4 py-1.5 rounded-full border transition-colors ${
               filter === f.key
                 ? 'bg-gold text-forest border-gold font-semibold'
@@ -86,38 +96,51 @@ export default function Review() {
           <div className="w-16 h-16 rounded-2xl bg-forest-mid border border-forest-light flex items-center justify-center mb-4">
             <TrendingUp size={26} className="text-gold" strokeWidth={1.5} />
           </div>
-          <p className="text-ivory-muted text-sm font-medium mb-1">Nothing to review yet</p>
+          <p className="text-ivory text-sm font-medium mb-1">Nothing to review yet</p>
           <p className="text-ivory-dim text-xs leading-relaxed max-w-[220px]">
-            Action steps from your sermon notes will appear here.
+            Growth steps help you practice what you heard. Add a weekly action step when writing a sermon note.
           </p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-ivory-muted text-sm">No steps in this category.</p>
+          <p className="text-ivory-muted text-sm">{FILTER_EMPTY[filter]}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(step => (
             <div key={step.id} className="bg-forest-mid rounded-2xl border border-forest-light overflow-hidden">
               <div className="p-5">
+                {/* Sermon source */}
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <BookOpen size={12} strokeWidth={2} className="text-gold shrink-0" />
+                  <Link
+                    to={`/notes/${step.sermonNoteId}`}
+                    className="text-xs text-gold font-medium truncate"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {step.sermonTitle}
+                  </Link>
+                </div>
+
+                {/* Step text */}
                 <p className="text-ivory text-sm leading-relaxed mb-3">{step.text}</p>
+
+                {/* Date + status + expand */}
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-ivory-dim">
-                    <Link
-                      to={`/notes/${step.sermonNoteId}`}
-                      className="text-gold font-medium"
-                      onClick={e => e.stopPropagation()}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${STATUS_BADGE[step.status]}`}
                     >
-                      {step.sermonTitle}
-                    </Link>
+                      {FOLLOW_UP_LABELS[step.status]}
+                    </span>
                     {step.weekStartDate && (
-                      <span className="ml-2">{formatDate(step.weekStartDate)}</span>
+                      <span className="text-xs text-ivory-dim">{formatDate(step.weekStartDate)}</span>
                     )}
-                  </p>
+                  </div>
                   <button
                     onClick={() => setExpandedId(expandedId === step.id ? null : step.id)}
                     className="text-ivory-dim p-1 -mr-1"
-                    aria-label="Expand"
+                    aria-label={expandedId === step.id ? 'Collapse' : 'Expand step'}
                   >
                     <ChevronDown
                       size={16}
@@ -125,13 +148,6 @@ export default function Review() {
                       className={`transition-transform ${expandedId === step.id ? 'rotate-180' : ''}`}
                     />
                   </button>
-                </div>
-                <div className="mt-3">
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${STATUS_BADGE[step.status]}`}
-                  >
-                    {FOLLOW_UP_LABELS[step.status]}
-                  </span>
                 </div>
               </div>
 
@@ -163,6 +179,15 @@ export default function Review() {
                       </p>
                     )}
                   </div>
+
+                  {/* Open sermon link */}
+                  <Link
+                    to={`/notes/${step.sermonNoteId}`}
+                    className="flex items-center gap-1.5 text-xs text-gold font-medium"
+                  >
+                    <BookOpen size={12} strokeWidth={2} />
+                    Open sermon
+                  </Link>
 
                   {/* Reflection */}
                   <div>
@@ -202,7 +227,7 @@ export default function Review() {
                         {step.reflection ? (
                           <p className="text-ivory-muted text-sm leading-relaxed">{step.reflection}</p>
                         ) : (
-                          <p className="text-ivory-dim text-sm italic">Tap to add a reflection...</p>
+                          <p className="text-ivory-dim text-sm italic">Tap to add a reflection…</p>
                         )}
                       </button>
                     )}
