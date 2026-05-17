@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Star } from 'lucide-react'
+import { ChevronLeft, ExternalLink, Star } from 'lucide-react'
 import { createSermonNote, updateSermonNote, getSermonNote } from '../db/database'
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
+import { buildBibleSearchUrl } from '../lib/bibleLinks'
 import { ALL_CATEGORIES, CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
 import type { SermonCategory, FollowUpStatus } from '../types'
+import ReflectionHelper from '../components/ReflectionHelper'
 
 interface FormState {
   title: string
@@ -93,6 +95,10 @@ export default function NoteForm({ mode = 'add' }: Props) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(prev => ({ ...prev, [field]: e.target.value } as FormState))
 
+  function applyToField(field: keyof FormState, text: string) {
+    setForm(prev => ({ ...prev, [field]: text }))
+  }
+
   async function handleSave() {
     if (!form.title.trim()) {
       setError('Please add a sermon title.')
@@ -139,10 +145,10 @@ export default function NoteForm({ mode = 'add' }: Props) {
     }
   }
 
-  const input = 'w-full bg-forest border border-forest-light text-ivory rounded-xl px-4 py-3 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold transition-colors'
-  const textarea = `${input} resize-none`
-  const label = 'block text-[10px] font-semibold text-gold uppercase tracking-widest mb-2'
-  const sectionLabel = 'text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-4'
+  const inputCls = 'w-full bg-forest border border-forest-light text-ivory rounded-xl px-4 py-3 text-sm placeholder:text-ivory-dim focus:outline-none focus:border-gold transition-colors'
+  const textareaCls = `${inputCls} resize-none`
+  const labelCls = 'block text-[10px] font-semibold text-gold uppercase tracking-widest mb-2'
+  const sectionLabelCls = 'text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-4'
 
   if (!loaded) {
     return (
@@ -185,73 +191,85 @@ export default function NoteForm({ mode = 'add' }: Props) {
       )}
 
       <div className="space-y-8">
-        {/* Sermon Details */}
+
+        {/* ── Section 1: Sermon Details ── */}
         <section>
-          <p className={sectionLabel}>Sermon Details</p>
+          <p className={sectionLabelCls}>Sermon Details</p>
           <div className="space-y-4">
             <div>
-              <label className={label}>Title *</label>
+              <label className={labelCls}>Title *</label>
               <input
                 ref={titleRef}
                 type="text"
                 value={form.title}
                 onChange={set('title')}
                 placeholder="Sermon title"
-                className={input}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className={label}>Date</label>
+              <label className={labelCls}>Date</label>
               <input
                 type="date"
                 value={form.sermonDate}
                 onChange={set('sermonDate')}
-                className={input}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className={label}>Church</label>
+              <label className={labelCls}>Church</label>
               <input
                 type="text"
                 value={form.churchName}
                 onChange={set('churchName')}
                 placeholder="Church name"
-                className={input}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className={label}>Preacher / Speaker</label>
+              <label className={labelCls}>Preacher / Speaker</label>
               <input
                 type="text"
                 value={form.preacherName}
                 onChange={set('preacherName')}
                 placeholder="Speaker name"
-                className={input}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className={label}>Main Bible Passage</label>
+              <label className={labelCls}>Main Bible Passage</label>
               <input
                 type="text"
                 value={form.mainBiblePassage}
                 onChange={set('mainBiblePassage')}
                 placeholder="e.g. John 15:1-8"
-                className={input}
+                className={inputCls}
               />
+              {form.mainBiblePassage.trim() && (
+                <a
+                  href={buildBibleSearchUrl(form.mainBiblePassage)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 mt-2 text-xs text-gold/70 hover:text-gold transition-colors w-fit"
+                >
+                  <ExternalLink size={11} strokeWidth={2} />
+                  Open passage externally
+                </a>
+              )}
             </div>
             <div>
-              <label className={label}>Other Scriptures</label>
+              <label className={labelCls}>Other Scriptures</label>
               <input
                 type="text"
                 value={form.otherScriptureReferences}
                 onChange={set('otherScriptureReferences')}
                 placeholder="e.g. Romans 8:1, Psalm 23"
-                className={input}
+                className={inputCls}
               />
             </div>
             <div>
-              <label className={label}>Topic / Category</label>
-              <select value={form.category} onChange={set('category')} className={input}>
+              <label className={labelCls}>Topic / Category</label>
+              <select value={form.category} onChange={set('category')} className={inputCls}>
                 <option value="">Select a category</option>
                 {ALL_CATEGORIES.map(c => (
                   <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
@@ -259,99 +277,118 @@ export default function NoteForm({ mode = 'add' }: Props) {
               </select>
             </div>
             <div>
-              <label className={label}>Tags</label>
+              <label className={labelCls}>Tags</label>
               <input
                 type="text"
                 value={form.tags}
                 onChange={set('tags')}
                 placeholder="faith, grace, surrender (comma-separated)"
-                className={input}
+                className={inputCls}
               />
             </div>
           </div>
         </section>
 
-        {/* The Message */}
+        {/* ── Section 2: Live Notes ── */}
         <section>
-          <p className={sectionLabel}>The Message</p>
+          <p className={sectionLabelCls}>Live Notes</p>
+          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
+            Capture what you can during the service. The reflection sections below can wait — you can
+            always come back after.
+          </p>
           <div className="space-y-4">
             <div>
-              <label className={label}>Full Notes</label>
+              <label className={labelCls}>Full Notes</label>
               <textarea
                 value={form.fullNotes}
                 onChange={set('fullNotes')}
                 rows={7}
                 placeholder="What was shared today..."
-                className={textarea}
+                className={textareaCls}
               />
             </div>
             <div>
-              <label className={label}>Key Quote</label>
+              <label className={labelCls}>Key Quote</label>
               <textarea
                 value={form.keyQuote}
                 onChange={set('keyQuote')}
                 rows={2}
                 placeholder="A line that stuck with you"
-                className={textarea}
+                className={textareaCls}
               />
             </div>
           </div>
         </section>
 
-        {/* My Response */}
+        {/* ── Reflection Helper ── */}
+        <ReflectionHelper
+          onUseTakeaway={text => applyToField('mainTakeaway', text)}
+          onUseConviction={text => applyToField('personalConviction', text)}
+          onUsePrayer={text => applyToField('prayerPoint', text)}
+          onUseActionStep={text => applyToField('weeklyActionStep', text)}
+        />
+
+        {/* ── Section 3: My Response ── */}
         <section>
-          <p className={sectionLabel}>My Response</p>
+          <p className={sectionLabelCls}>My Response</p>
+          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
+            What did this message stir in you? These can be filled during or after service.
+          </p>
           <div className="space-y-4">
             <div>
-              <label className={label}>Main Takeaway</label>
+              <label className={labelCls}>Main Takeaway</label>
               <textarea
                 value={form.mainTakeaway}
                 onChange={set('mainTakeaway')}
                 rows={3}
                 placeholder="What is the one thing I'm taking from this?"
-                className={textarea}
+                className={textareaCls}
               />
             </div>
             <div>
-              <label className={label}>Personal Conviction</label>
+              <label className={labelCls}>Personal Conviction</label>
               <textarea
                 value={form.personalConviction}
                 onChange={set('personalConviction')}
                 rows={3}
                 placeholder="What did the Spirit highlight for me personally?"
-                className={textarea}
+                className={textareaCls}
               />
             </div>
           </div>
         </section>
 
-        {/* Growth Step */}
+        {/* ── Section 4: Prayer & Growth Step ── */}
         <section>
-          <p className={sectionLabel}>Growth Step</p>
+          <p className={sectionLabelCls}>Prayer &amp; Growth Step</p>
+          <p className="text-xs text-ivory-dim leading-relaxed mb-4">
+            Turn this sermon into one prayer and one faithful step. Both are optional — add them when
+            you're ready.
+          </p>
           <div className="space-y-4">
             <div>
-              <label className={label}>Prayer Point</label>
+              <label className={labelCls}>Prayer Point</label>
               <textarea
                 value={form.prayerPoint}
                 onChange={set('prayerPoint')}
                 rows={2}
                 placeholder="What will I pray about from this message?"
-                className={textarea}
+                className={textareaCls}
               />
             </div>
             <div>
-              <label className={label}>Weekly Action Step</label>
+              <label className={labelCls}>Weekly Growth Step</label>
               <textarea
                 value={form.weeklyActionStep}
                 onChange={set('weeklyActionStep')}
                 rows={2}
                 placeholder="One thing I will do this week because of this message"
-                className={textarea}
+                className={textareaCls}
               />
             </div>
             <div>
-              <label className={label}>Follow-up Status</label>
-              <select value={form.followUpStatus} onChange={set('followUpStatus')} className={input}>
+              <label className={labelCls}>Follow-up Status</label>
+              <select value={form.followUpStatus} onChange={set('followUpStatus')} className={inputCls}>
                 {(Object.entries(FOLLOW_UP_LABELS) as [string, string][]).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}

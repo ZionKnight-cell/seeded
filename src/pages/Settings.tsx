@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ChevronLeft, Shield, Calendar, Info, Trash2,
-  Download, Upload, Wrench, Wifi, Smartphone,
+  Download, Upload, Wrench, Wifi, Smartphone, BookOpen,
 } from 'lucide-react'
 import { clearAllData, exportAllData, importAllData, repairData } from '../db/database'
 import { useToast } from '../components/Toast'
@@ -148,6 +148,20 @@ export default function Settings() {
           <p className="text-ivory-dim text-sm leading-relaxed">
             All your notes are stored on this device using IndexedDB. Nothing is sent to any server.
             Your reflections are yours alone.
+          </p>
+        </div>
+
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+              <BookOpen size={17} className="text-gold" strokeWidth={1.5} />
+            </div>
+            <p className="text-sm font-medium text-ivory">Scripture Passages</p>
+          </div>
+          <p className="text-ivory-dim text-sm leading-relaxed">
+            Seeded doesn't include a Bible translation. Add references manually and tap "Open passage
+            externally" to read them in BibleGateway or your preferred Bible app. This keeps the app
+            simple, offline-first, and respectful of Bible translation licensing.
           </p>
         </div>
       </div>

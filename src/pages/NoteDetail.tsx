@@ -9,10 +9,12 @@ import {
   Heart,
   Target,
   Lightbulb,
+  ExternalLink,
 } from 'lucide-react'
 import { getSermonNote, deleteSermonNote, updateSermonNote } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
+import { buildBibleSearchUrl } from '../lib/bibleLinks'
 import { CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
 import type { SermonNote, FollowUpStatus } from '../types'
 
@@ -23,6 +25,10 @@ function Card({ label, children }: { label: string; children: React.ReactNode })
       {children}
     </div>
   )
+}
+
+function needsReflection(note: SermonNote): boolean {
+  return !!(note.fullNotes && (!note.prayerPoint || !note.weeklyActionStep))
 }
 
 export default function NoteDetail() {
@@ -138,12 +144,23 @@ export default function NoteDetail() {
           <Card label="Scripture">
             <div className="flex items-start gap-2">
               <BookOpen size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
-              <div>
+              <div className="flex-1 min-w-0">
                 {note.mainBiblePassage && (
-                  <p className="text-ivory text-sm font-medium">{note.mainBiblePassage}</p>
+                  <>
+                    <p className="text-ivory text-sm font-medium">{note.mainBiblePassage}</p>
+                    <a
+                      href={buildBibleSearchUrl(note.mainBiblePassage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 mt-1.5 text-xs text-gold/60 hover:text-gold transition-colors w-fit"
+                    >
+                      <ExternalLink size={10} strokeWidth={2} />
+                      Open passage externally
+                    </a>
+                  </>
                 )}
                 {note.otherScriptureReferences && (
-                  <p className="text-ivory-muted text-sm mt-1">{note.otherScriptureReferences}</p>
+                  <p className="text-ivory-muted text-sm mt-2">{note.otherScriptureReferences}</p>
                 )}
               </div>
             </div>
@@ -181,6 +198,28 @@ export default function NoteDetail() {
           </Card>
         )}
 
+        {/* Reflection prompt — shown when there are notes but reflection is incomplete */}
+        {needsReflection(note) && (
+          <div className="bg-forest-mid rounded-2xl p-5 border border-gold/20">
+            <div className="flex items-start gap-3">
+              <Lightbulb size={15} className="text-gold shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-ivory mb-1">Still reflecting?</p>
+                <p className="text-xs text-ivory-dim leading-relaxed mb-3">
+                  Use the Reflection Helper to shape this message into a prayer point and one faithful
+                  step for the week.
+                </p>
+                <Link
+                  to={`/notes/${note.id}/edit`}
+                  className="text-xs font-semibold text-forest bg-gold px-4 py-2 rounded-lg inline-block"
+                >
+                  Edit and reflect
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Prayer */}
         {note.prayerPoint && (
           <Card label="Prayer Point">
@@ -193,7 +232,7 @@ export default function NoteDetail() {
 
         {/* Action Step */}
         {note.weeklyActionStep && (
-          <Card label="Weekly Action Step">
+          <Card label="Weekly Growth Step">
             <div className="flex items-start gap-2 mb-4">
               <Target size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
               <p className="text-ivory text-sm leading-relaxed">{note.weeklyActionStep}</p>

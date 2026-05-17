@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Settings, Plus, Target, BookOpen, Heart } from 'lucide-react'
+import { Settings, Plus, Target, BookOpen, Heart, Lightbulb } from 'lucide-react'
 import { db } from '../db/database'
 import { formatDate } from '../lib/dates'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
@@ -12,6 +12,8 @@ interface DashboardData {
   totalNotes: number
   activePrayerCount: number
   completedStepCount: number
+  reflectionNote: SermonNote | undefined
+  reflectionCount: number
 }
 
 const EMPTY_DATA: DashboardData = {
@@ -21,6 +23,8 @@ const EMPTY_DATA: DashboardData = {
   totalNotes: 0,
   activePrayerCount: 0,
   completedStepCount: 0,
+  reflectionNote: undefined,
+  reflectionCount: 0,
 }
 
 export default function Home() {
@@ -29,16 +33,21 @@ export default function Home() {
 
   useEffect(() => {
     async function load() {
-      const [notes, allPrayers, allSteps, totalNotes, completedSteps] = await Promise.all([
+      const [notes, allPrayers, allSteps, totalNotes, completedSteps, allNotes] = await Promise.all([
         db.sermonNotes.orderBy('sermonDate').reverse().limit(1).toArray(),
         db.prayerPoints.toArray(),
         db.actionSteps.toArray(),
         db.sermonNotes.count(),
         db.actionSteps.toArray().then(s => s.filter(a => a.status === 'done').length),
+        db.sermonNotes.orderBy('sermonDate').reverse().toArray(),
       ])
 
       const prayers = allPrayers.filter(p => p.status === 'active')
       const steps = allSteps.filter(s => s.status !== 'done')
+
+      const needingReflection = allNotes.filter(
+        n => !!(n.fullNotes && (!n.prayerPoint || !n.weeklyActionStep))
+      )
 
       setData({
         latestNote: notes[0],
@@ -47,6 +56,8 @@ export default function Home() {
         totalNotes,
         activePrayerCount: prayers.length,
         completedStepCount: completedSteps,
+        reflectionNote: needingReflection[0],
+        reflectionCount: needingReflection.length,
       })
       setReady(true)
     }
@@ -76,14 +87,14 @@ export default function Home() {
           {isEmpty ? 'Welcome to Seeded.' : 'Let the Word take root.'}
         </h1>
         <p className="text-ivory-dim text-sm leading-relaxed">
-          Rooted in the Word. Growing in faith.
+          Capture the message. Reflect on it. Pray through it. Practice one step.
         </p>
       </div>
 
       {/* CTA */}
       <Link
         to="/add"
-        className="flex items-center justify-center gap-2 w-full bg-gold text-forest font-semibold py-4 rounded-2xl mb-8 shadow-lg text-[15px]"
+        className="flex items-center justify-center gap-2 w-full bg-gold text-forest font-semibold py-4 rounded-2xl mb-6 shadow-lg text-[15px]"
       >
         <Plus size={18} strokeWidth={2.5} />
         New Sermon Note
@@ -99,11 +110,37 @@ export default function Home() {
             Capture what you hear. Keep what matters. Let it shape how you live.
           </p>
           <p className="text-ivory-dim text-sm leading-relaxed">
-            Add your first sermon note and your prayer points, action steps, and reflections will all appear here.
+            Add your first sermon note — then use the Reflection Helper to turn it into a prayer point
+            and one faithful step for the week.
           </p>
         </div>
       ) : (
         <>
+          {/* Ready to Reflect card */}
+          {data.reflectionCount > 0 && (
+            <div className="bg-forest-mid rounded-2xl p-5 border border-gold/25 mb-6">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Lightbulb size={14} className="text-gold shrink-0" strokeWidth={1.5} />
+                <span className="text-[10px] font-semibold text-gold uppercase tracking-widest">
+                  Ready to Reflect
+                </span>
+              </div>
+              <p className="text-ivory text-sm leading-relaxed mb-3">
+                {data.reflectionCount === 1
+                  ? 'You have a sermon note with notes but no prayer point or growth step yet.'
+                  : `You have ${data.reflectionCount} sermon notes waiting for a prayer point or growth step.`}
+              </p>
+              {data.reflectionNote && (
+                <Link
+                  to={`/notes/${data.reflectionNote.id}/edit`}
+                  className="text-xs font-semibold text-gold"
+                >
+                  Continue reflection →
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* This Week */}
           <section className="mb-8">
             <h2 className="text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-3">
@@ -126,7 +163,7 @@ export default function Home() {
                     </Link>
                   </>
                 ) : (
-                  <p className="text-ivory-muted text-sm">No active action steps this week.</p>
+                  <p className="text-ivory-muted text-sm">No active growth steps this week.</p>
                 )}
               </div>
 

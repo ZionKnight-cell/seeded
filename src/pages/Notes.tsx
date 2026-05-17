@@ -6,9 +6,14 @@ import { formatDate } from '../lib/dates'
 import { ALL_CATEGORIES, CATEGORY_LABELS } from '../types'
 import type { SermonNote } from '../types'
 
+function noteNeedsReflection(note: SermonNote): boolean {
+  return !!(note.fullNotes && (!note.prayerPoint || !note.weeklyActionStep))
+}
+
 const CHIPS = [
   { key: 'all', label: 'All' },
   { key: 'favorites', label: 'Favorites' },
+  { key: 'needs_reflection', label: 'Needs Reflection' },
   ...ALL_CATEGORIES.map(c => ({ key: c, label: CATEGORY_LABELS[c] })),
 ]
 
@@ -26,6 +31,8 @@ export default function Notes() {
 
     if (filter === 'favorites') {
       notes = notes.filter(n => n.isFavorite)
+    } else if (filter === 'needs_reflection') {
+      notes = notes.filter(noteNeedsReflection)
     } else if (filter !== 'all') {
       notes = notes.filter(n => n.category === filter)
     }
@@ -104,7 +111,11 @@ export default function Notes() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-ivory-muted text-sm">No notes match your search.</p>
+          <p className="text-ivory-muted text-sm">
+            {filter === 'needs_reflection'
+              ? 'All your notes with full notes have a prayer point and growth step — well done.'
+              : 'No notes match your search.'}
+          </p>
           <button
             onClick={() => { setSearch(''); setFilter('all') }}
             className="mt-3 text-gold text-xs font-medium"
@@ -114,38 +125,48 @@ export default function Notes() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(note => (
-            <Link
-              key={note.id}
-              to={`/notes/${note.id}`}
-              className="block bg-forest-mid rounded-2xl p-5 border border-forest-light active:opacity-80 transition-opacity"
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
-                {note.isFavorite && (
-                  <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favorite" />
+          {filtered.map(note => {
+            const reflectionNeeded = noteNeedsReflection(note)
+            return (
+              <Link
+                key={note.id}
+                to={`/notes/${note.id}`}
+                className="block bg-forest-mid rounded-2xl p-5 border border-forest-light active:opacity-80 transition-opacity"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
+                  {note.isFavorite && (
+                    <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favorite" />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">
+                  <span>{formatDate(note.sermonDate)}</span>
+                  {note.preacherName && <span>· {note.preacherName}</span>}
+                  {note.churchName && <span>· {note.churchName}</span>}
+                </div>
+                {note.mainBiblePassage && (
+                  <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
                 )}
-              </div>
-              <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">
-                <span>{formatDate(note.sermonDate)}</span>
-                {note.preacherName && <span>· {note.preacherName}</span>}
-                {note.churchName && <span>· {note.churchName}</span>}
-              </div>
-              {note.mainBiblePassage && (
-                <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
-              )}
-              {note.mainTakeaway && (
-                <p className="text-ivory-muted text-xs leading-relaxed line-clamp-2">
-                  {note.mainTakeaway}
-                </p>
-              )}
-              {note.category && (
-                <span className="inline-block mt-3 text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                  {CATEGORY_LABELS[note.category]}
-                </span>
-              )}
-            </Link>
-          ))}
+                {note.mainTakeaway && (
+                  <p className="text-ivory-muted text-xs leading-relaxed line-clamp-2">
+                    {note.mainTakeaway}
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {note.category && (
+                    <span className="text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                      {CATEGORY_LABELS[note.category]}
+                    </span>
+                  )}
+                  {reflectionNeeded && (
+                    <span className="text-[10px] font-medium text-gold/60 border border-gold/20 px-2.5 py-0.5 rounded-full">
+                      Needs reflection
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>
