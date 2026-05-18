@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Star, BookOpen, Sun } from 'lucide-react'
+import { Search, Star, BookOpen, Sun, Calendar } from 'lucide-react'
 import { db } from '../db/database'
 import { formatDate } from '../lib/dates'
 import { ALL_CATEGORIES, CATEGORY_LABELS, getNoteType } from '../types'
@@ -10,7 +10,7 @@ function noteNeedsReflection(note: SermonNote): boolean {
   return !!(note.fullNotes && (!note.prayerPoint || !note.weeklyActionStep))
 }
 
-const CHIPS = [
+const TYPE_CHIPS = [
   { key: 'all', label: 'All' },
   { key: 'sermons', label: 'Sermons' },
   { key: 'quiet_time', label: 'Quiet Time' },
@@ -19,10 +19,44 @@ const CHIPS = [
   ...ALL_CATEGORIES.map(c => ({ key: c, label: CATEGORY_LABELS[c] })),
 ]
 
+type DateRange = 'all' | 'week' | 'month' | 'quarter' | 'year'
+
+const DATE_CHIPS: { key: DateRange; label: string }[] = [
+  { key: 'all', label: 'All time' },
+  { key: 'week', label: 'This week' },
+  { key: 'month', label: 'This month' },
+  { key: 'quarter', label: 'Last 3 months' },
+  { key: 'year', label: 'This year' },
+]
+
+function isInDateRange(isoDate: string | undefined, range: DateRange): boolean {
+  if (range === 'all' || !isoDate) return true
+  const d = new Date(isoDate.includes('T') ? isoDate : `${isoDate}T12:00:00`)
+  if (isNaN(d.getTime())) return true
+  const now = new Date()
+  switch (range) {
+    case 'week': {
+      const cutoff = new Date(now)
+      cutoff.setDate(now.getDate() - 7)
+      return d >= cutoff
+    }
+    case 'month':
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    case 'quarter': {
+      const cutoff = new Date(now)
+      cutoff.setMonth(now.getMonth() - 3)
+      return d >= cutoff
+    }
+    case 'year':
+      return d.getFullYear() === now.getFullYear()
+  }
+}
+
 export default function Notes() {
   const [allNotes, setAllNotes] = useState<SermonNote[]>([])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [dateRange, setDateRange] = useState<DateRange>('all')
 
   useEffect(() => {
     db.sermonNotes.orderBy('sermonDate').reverse().toArray().then(setAllNotes)
@@ -43,12 +77,17 @@ export default function Notes() {
       notes = notes.filter(n => n.category === filter)
     }
 
+    if (dateRange !== 'all') {
+      notes = notes.filter(n => isInDateRange(n.sermonDate, dateRange))
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase()
       notes = notes.filter(n =>
         n.title.toLowerCase().includes(q) ||
         (n.preacherName?.toLowerCase().includes(q) ?? false) ||
         (n.churchName?.toLowerCase().includes(q) ?? false) ||
+        (n.seriesName?.toLowerCase().includes(q) ?? false) ||
         (n.mainBiblePassage?.toLowerCase().includes(q) ?? false) ||
         (n.otherScriptureReferences?.toLowerCase().includes(q) ?? false) ||
         (n.devotionalSource?.toLowerCase().includes(q) ?? false) ||
@@ -65,7 +104,9 @@ export default function Notes() {
     }
 
     return notes
-  }, [allNotes, search, filter])
+  }, [allNotes, search, filter, dateRange])
+
+  const activeFilters = filter !== 'all' || dateRange !== 'all' || search.trim()
 
   return (
     <div className="px-5 pt-8 pb-4">
@@ -76,7 +117,7 @@ export default function Notes() {
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ivory-dim pointer-events-none" strokeWidth={2} />
         <input
           type="search"
-          placeholder="Search by title, passage, tags…"
+          placeholder="Search by title, passage, series, tags…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           aria-label="Search notes"
@@ -84,9 +125,9 @@ export default function Notes() {
         />
       </div>
 
-      {/* Filter Chips */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-5 px-5">
-        {CHIPS.map(chip => (
+      {/* Type Filter Chips */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-none -mx-5 px-5">
+        {TYPE_CHIPS.map(chip => (
           <button
             key={chip.key}
             onClick={() => setFilter(chip.key)}
@@ -94,6 +135,27 @@ export default function Notes() {
             className={`shrink-0 text-xs px-4 py-1.5 rounded-full border transition-colors ${
               filter === chip.key
                 ? 'bg-gold text-forest border-gold font-semibold'
+                : 'border-forest-light text-ivory-dim'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Date Range Chips */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-5 px-5">
+        <span className="shrink-0 flex items-center gap-1 text-[10px] text-ivory-dim font-semibold uppercase tracking-widest pr-1">
+          <Calendar size={11} strokeWidth={2} />
+        </span>
+        {DATE_CHIPS.map(chip => (
+          <button
+            key={chip.key}
+            onClick={() => setDateRange(chip.key)}
+            aria-pressed={dateRange === chip.key}
+            className={`shrink-0 text-xs px-4 py-1.5 rounded-full border transition-colors ${
+              dateRange === chip.key
+                ? 'bg-forest-light text-ivory border-forest-light font-semibold'
                 : 'border-forest-light text-ivory-dim'
             }`}
           >
@@ -124,67 +186,79 @@ export default function Notes() {
           <p className="text-ivory-muted text-sm">
             {filter === 'needs_reflection'
               ? 'Nothing waiting for reflection — all your notes with content have a prayer point and growth step.'
-              : 'No notes match your search.'}
+              : 'No notes match your search or filters.'}
           </p>
-          <button
-            onClick={() => { setSearch(''); setFilter('all') }}
-            className="mt-3 text-gold text-xs font-medium"
-          >
-            Clear filters
-          </button>
+          {activeFilters && (
+            <button
+              onClick={() => { setSearch(''); setFilter('all'); setDateRange('all') }}
+              className="mt-3 text-gold text-xs font-medium"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(note => {
-            const reflectionNeeded = noteNeedsReflection(note)
-            const isQT = getNoteType(note) === 'quiet_time'
-            return (
-              <Link
-                key={note.id}
-                to={`/notes/${note.id}`}
-                className="block bg-forest-mid rounded-2xl p-5 border border-forest-light active:opacity-80 transition-opacity"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
-                  {note.isFavorite && (
-                    <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favorite" />
+        <>
+          {(dateRange !== 'all' || filter !== 'all') && (
+            <p className="text-xs text-ivory-dim mb-3">{filtered.length} note{filtered.length !== 1 ? 's' : ''}</p>
+          )}
+          <div className="space-y-3">
+            {filtered.map(note => {
+              const reflectionNeeded = noteNeedsReflection(note)
+              const isQT = getNoteType(note) === 'quiet_time'
+              return (
+                <Link
+                  key={note.id}
+                  to={`/notes/${note.id}`}
+                  className="block bg-forest-mid rounded-2xl p-5 border border-forest-light active:opacity-80 transition-opacity"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h2 className="text-ivory text-[15px] font-semibold leading-snug">{note.title}</h2>
+                    {note.isFavorite && (
+                      <Star size={14} className="text-gold shrink-0 mt-0.5" fill="currentColor" strokeWidth={0} aria-label="Favorite" />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-1">
+                    <span>{formatDate(note.sermonDate)}</span>
+                    {!isQT && note.preacherName && <span>· {note.preacherName}</span>}
+                    {!isQT && note.churchName && <span>· {note.churchName}</span>}
+                  </div>
+                  {!isQT && note.seriesName && (
+                    <p className="text-xs text-ivory-dim italic mb-1 truncate">
+                      {note.seriesName}{note.seriesPart ? ` — ${note.seriesPart}` : ''}
+                    </p>
                   )}
-                </div>
-                <div className="flex flex-wrap gap-x-2 text-xs text-ivory-dim mb-2">
-                  <span>{formatDate(note.sermonDate)}</span>
-                  {!isQT && note.preacherName && <span>· {note.preacherName}</span>}
-                  {!isQT && note.churchName && <span>· {note.churchName}</span>}
-                </div>
-                {note.mainBiblePassage && (
-                  <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
-                )}
-                {note.mainTakeaway && (
-                  <p className="text-ivory-muted text-xs leading-relaxed line-clamp-2">
-                    {note.mainTakeaway}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  {isQT && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                      <Sun size={8} strokeWidth={2} />
-                      Quiet Time
-                    </span>
+                  {note.mainBiblePassage && (
+                    <p className="text-[11px] text-gold mb-2">{note.mainBiblePassage}</p>
                   )}
-                  {!isQT && note.category && (
-                    <span className="text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                      {CATEGORY_LABELS[note.category]}
-                    </span>
+                  {note.mainTakeaway && (
+                    <p className="text-ivory-muted text-xs leading-relaxed line-clamp-2">
+                      {note.mainTakeaway}
+                    </p>
                   )}
-                  {reflectionNeeded && (
-                    <span className="text-[10px] font-medium text-gold/60 border border-gold/20 px-2.5 py-0.5 rounded-full">
-                      Needs reflection
-                    </span>
-                  )}
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {isQT && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                        <Sun size={8} strokeWidth={2} />
+                        Quiet Time
+                      </span>
+                    )}
+                    {!isQT && note.category && (
+                      <span className="text-[10px] font-semibold text-gold bg-forest-light px-2.5 py-0.5 rounded-full uppercase tracking-widest">
+                        {CATEGORY_LABELS[note.category]}
+                      </span>
+                    )}
+                    {reflectionNeeded && (
+                      <span className="text-[10px] font-medium text-gold/60 border border-gold/20 px-2.5 py-0.5 rounded-full">
+                        Needs reflection
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

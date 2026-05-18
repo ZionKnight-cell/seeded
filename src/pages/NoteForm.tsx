@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ExternalLink, Star } from 'lucide-react'
-import { createSermonNote, updateSermonNote, getSermonNote } from '../db/database'
+import { ChevronLeft, ExternalLink, Star, ImagePlus, X } from 'lucide-react'
+import {
+  createSermonNote, updateSermonNote, getSermonNote,
+  getAttachments, addAttachment, deleteAttachment,
+} from '../db/database'
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
 import { buildBibleSearchUrl, parseScriptureReferences } from '../lib/bibleLinks'
 import { getDraft, saveDraft, clearDraft } from '../lib/draft'
+import { compressImage } from '../lib/imageUtils'
 import { ALL_CATEGORIES, CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
-import type { SermonCategory, FollowUpStatus } from '../types'
+import type { SermonCategory, FollowUpStatus, NoteAttachment } from '../types'
 import ReflectionHelper from '../components/ReflectionHelper'
 
 interface FormState {
@@ -15,6 +19,8 @@ interface FormState {
   sermonDate: string
   churchName: string
   preacherName: string
+  seriesName: string
+  seriesPart: string
   mainBiblePassage: string
   otherScriptureReferences: string
   category: string
@@ -33,6 +39,8 @@ const EMPTY_TEMPLATE: Omit<FormState, 'sermonDate'> = {
   title: '',
   churchName: '',
   preacherName: '',
+  seriesName: '',
+  seriesPart: '',
   mainBiblePassage: '',
   otherScriptureReferences: '',
   category: '',
@@ -51,6 +59,8 @@ function makeEmpty(): FormState {
   return { ...EMPTY_TEMPLATE, sermonDate: todayIso() }
 }
 
+const MAX_ATTACHMENTS = 3
+
 interface Props {
   mode?: 'add' | 'edit'
 }
@@ -66,7 +76,12 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const [showDraftRecovery, setShowDraftRecovery] = useState(false)
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saved' | 'restored'>('idle')
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [existingAttachments, setExistingAttachments] = useState<NoteAttachment[]>([])
+  const [pendingAttachments, setPendingAttachments] = useState<{ id: string; name: string; mimeType: string; dataUrl: string }[]>([])
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<string[]>([])
+  const [addingPhoto, setAddingPhoto] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const baseFormRef = useRef<FormState>(makeEmpty())
   const savedRef = useRef(false)
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -75,6 +90,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const draftKey = mode === 'edit' && id ? `seeded:draft:edit:${id}` : 'seeded:draft:new:sermon'
   const backDest = mode === 'edit' && id ? `/notes/${id}` : '/add'
   const isDirty = JSON.stringify(form) !== JSON.stringify(baseFormRef.current)
+
+  const totalAttachments = existingAttachments.length + pendingAttachments.length
 
   // Add mode: check for existing draft on mount
   useEffect(() => {
@@ -94,6 +111,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
           sermonDate: note.sermonDate.split('T')[0],
           churchName: note.churchName ?? '',
           preacherName: note.preacherName ?? '',
+          seriesName: note.seriesName ?? '',
+          seriesPart: note.seriesPart ?? '',
           mainBiblePassage: note.mainBiblePassage ?? '',
           otherScriptureReferences: note.otherScriptureReferences ?? '',
           category: note.category ?? '',
@@ -112,6 +131,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
         if (getDraft(draftKey)) setShowDraftRecovery(true)
         setLoaded(true)
       })
+      getAttachments(id).then(setExistingAttachments)
     }
   }, [mode, id, navigate, draftKey])
 
@@ -180,6 +200,40 @@ export default function NoteForm({ mode = 'add' }: Props) {
     setShowDraftRecovery(false)
   }
 
+  async function handleAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    e.target.value = ''
+    if (totalAttachments >= MAX_ATTACHMENTS) {
+      showToast(`Maximum ${MAX_ATTACHMENTS} photos per note`, 'error')
+      return
+    }
+    setAddingPhoto(true)
+    try {
+      const canAdd = Math.min(MAX_ATTACHMENTS - totalAttachments, files.length)
+      for (let i = 0; i < canAdd; i++) {
+        const file = files[i]
+        const dataUrl = await compressImage(file)
+        setPendingAttachments(prev => [
+          ...prev,
+          { id: crypto.randomUUID(), name: file.name, mimeType: 'image/jpeg', dataUrl },
+        ])
+      }
+    } catch {
+      showToast('Could not process image. Please try another.', 'error')
+    }
+    setAddingPhoto(false)
+  }
+
+  function handleRemoveExisting(attId: string) {
+    setExistingAttachments(prev => prev.filter(a => a.id !== attId))
+    setDeletedAttachmentIds(prev => [...prev, attId])
+  }
+
+  function handleRemovePending(tempId: string) {
+    setPendingAttachments(prev => prev.filter(a => a.id !== tempId))
+  }
+
   async function handleSave() {
     if (!form.title.trim()) {
       setError('Please add a sermon title.')
@@ -196,6 +250,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
       sermonDate: form.sermonDate || todayIso(),
       churchName: form.churchName.trim() || undefined,
       preacherName: form.preacherName.trim() || undefined,
+      seriesName: form.seriesName.trim() || undefined,
+      seriesPart: form.seriesPart.trim() || undefined,
       mainBiblePassage: form.mainBiblePassage.trim() || undefined,
       otherScriptureReferences: form.otherScriptureReferences.trim() || undefined,
       category: (form.category as SermonCategory) || undefined,
@@ -213,12 +269,19 @@ export default function NoteForm({ mode = 'add' }: Props) {
     try {
       if (mode === 'edit' && id) {
         await updateSermonNote(id, data)
+        for (const attId of deletedAttachmentIds) await deleteAttachment(attId)
+        for (const att of pendingAttachments) {
+          await addAttachment(id, att.name, att.mimeType, att.dataUrl)
+        }
         clearDraft(draftKey)
         savedRef.current = true
         showToast('Note updated')
         navigate(`/notes/${id}`)
       } else {
         const newId = await createSermonNote(data)
+        for (const att of pendingAttachments) {
+          await addAttachment(newId, att.name, att.mimeType, att.dataUrl)
+        }
         clearDraft(draftKey)
         savedRef.current = true
         showToast('Sermon note saved')
@@ -251,7 +314,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
   return (
     <div className="px-5 pt-6 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 print:hidden">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -533,7 +596,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
         <section>
           <p className={sectionLabelCls}>Organization</p>
           <p className={sectionHelpCls}>
-            Category and tags help you find notes later. Both are optional.
+            Category, series, and tags help you find notes later. All optional.
           </p>
           <div className="space-y-4">
             <div>
@@ -544,6 +607,28 @@ export default function NoteForm({ mode = 'add' }: Props) {
                   <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                 ))}
               </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Series Name</label>
+                <input
+                  type="text"
+                  value={form.seriesName}
+                  onChange={set('seriesName')}
+                  placeholder="e.g. Fruit of the Spirit"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Part / Week</label>
+                <input
+                  type="text"
+                  value={form.seriesPart}
+                  onChange={set('seriesPart')}
+                  placeholder="e.g. Part 2"
+                  className={inputCls}
+                />
+              </div>
             </div>
             <div>
               <label className={labelCls}>Tags</label>
@@ -556,6 +641,66 @@ export default function NoteForm({ mode = 'add' }: Props) {
               />
             </div>
           </div>
+        </section>
+
+        {/* ── Section 6: Photos ── */}
+        <section>
+          <p className={sectionLabelCls}>Photos</p>
+          <p className={sectionHelpCls}>
+            Attach a photo of handwritten notes or anything worth remembering. Photos are stored locally on this device only.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-3">
+            {existingAttachments.map(att => (
+              <div key={att.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-forest-light">
+                <img src={att.dataUrl} alt="Attachment" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExisting(att.id)}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                  aria-label="Remove photo"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+            {pendingAttachments.map(att => (
+              <div key={att.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gold/30">
+                <img src={att.dataUrl} alt="New attachment" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemovePending(att.id)}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                  aria-label="Remove photo"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+            {totalAttachments < MAX_ATTACHMENTS && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={addingPhoto}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-forest-light flex flex-col items-center justify-center gap-1 text-ivory-dim hover:border-gold hover:text-gold transition-colors disabled:opacity-50"
+                aria-label="Add photo"
+              >
+                <ImagePlus size={20} strokeWidth={1.5} />
+                <span className="text-[10px]">Add</span>
+              </button>
+            )}
+          </div>
+          {addingPhoto && <p className="text-xs text-ivory-dim">Processing image…</p>}
+          {totalAttachments >= MAX_ATTACHMENTS && (
+            <p className="text-xs text-ivory-dim">Maximum {MAX_ATTACHMENTS} photos reached.</p>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleAddPhoto}
+            className="hidden"
+          />
         </section>
 
         <button

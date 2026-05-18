@@ -30,6 +30,15 @@ export interface PrayerUpdate {
   createdAt: string
 }
 
+export interface NoteAttachment {
+  id: string
+  noteId: string
+  name: string
+  mimeType: string
+  dataUrl: string
+  createdAt: string
+}
+
 export interface SermonNote {
   id: string
   noteType?: NoteType           // undefined treated as 'sermon' — backward compatible
@@ -38,6 +47,8 @@ export interface SermonNote {
   // Sermon-specific fields
   churchName?: string
   preacherName?: string
+  seriesName?: string
+  seriesPart?: string
   otherScriptureReferences?: string
   category?: SermonCategory
   keyQuote?: string

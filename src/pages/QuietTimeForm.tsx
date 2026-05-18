@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ExternalLink, Star } from 'lucide-react'
-import { createSermonNote, updateSermonNote, getSermonNote } from '../db/database'
+import { ChevronLeft, ExternalLink, Star, ImagePlus, X } from 'lucide-react'
+import {
+  createSermonNote, updateSermonNote, getSermonNote,
+  getAttachments, addAttachment, deleteAttachment,
+} from '../db/database'
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
 import { buildBibleSearchUrl } from '../lib/bibleLinks'
 import { getDraft, saveDraft, clearDraft } from '../lib/draft'
+import { compressImage } from '../lib/imageUtils'
 import { FOLLOW_UP_LABELS } from '../types'
-import type { FollowUpStatus } from '../types'
+import type { FollowUpStatus, NoteAttachment } from '../types'
 import ReflectionHelper from '../components/ReflectionHelper'
 
 interface FormState {
@@ -71,9 +75,17 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  const [existingAttachments, setExistingAttachments] = useState<NoteAttachment[]>([])
+  const [pendingAttachments, setPendingAttachments] = useState<{ id: string; name: string; mimeType: string; dataUrl: string }[]>([])
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<string[]>([])
+  const [addingPhoto, setAddingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   const draftKey = mode === 'edit' && id ? `seeded:draft:edit:${id}` : 'seeded:draft:new:quiet_time'
   const backDest = mode === 'edit' && id ? `/notes/${id}` : '/add'
   const isDirty = JSON.stringify(form) !== JSON.stringify(baseFormRef.current)
+  const MAX_ATTACHMENTS = 3
+  const totalAttachments = existingAttachments.length + pendingAttachments.length
 
   // Add mode: check for existing draft on mount
   useEffect(() => {
@@ -82,6 +94,13 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load existing attachments in edit mode
+  useEffect(() => {
+    if (mode === 'edit' && id) {
+      getAttachments(id).then(setExistingAttachments)
+    }
+  }, [mode, id])
 
   // Edit mode: load note then check for draft
   useEffect(() => {
@@ -179,6 +198,39 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
     setShowDraftRecovery(false)
   }
 
+  async function handleAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    e.target.value = ''
+    if (totalAttachments >= MAX_ATTACHMENTS) {
+      showToast(`Maximum ${MAX_ATTACHMENTS} photos per note`, 'error')
+      return
+    }
+    setAddingPhoto(true)
+    try {
+      const canAdd = Math.min(MAX_ATTACHMENTS - totalAttachments, files.length)
+      for (let i = 0; i < canAdd; i++) {
+        const dataUrl = await compressImage(files[i])
+        setPendingAttachments(prev => [
+          ...prev,
+          { id: crypto.randomUUID(), name: files[i].name, mimeType: 'image/jpeg', dataUrl },
+        ])
+      }
+    } catch {
+      showToast('Could not process image. Please try another.', 'error')
+    }
+    setAddingPhoto(false)
+  }
+
+  function handleRemoveExisting(attId: string) {
+    setExistingAttachments(prev => prev.filter(a => a.id !== attId))
+    setDeletedAttachmentIds(prev => [...prev, attId])
+  }
+
+  function handleRemovePending(tempId: string) {
+    setPendingAttachments(prev => prev.filter(a => a.id !== tempId))
+  }
+
   async function handleSave() {
     if (!form.title.trim()) {
       setError('Please add a title for this quiet time note.')
@@ -212,12 +264,19 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
     try {
       if (mode === 'edit' && id) {
         await updateSermonNote(id, data)
+        for (const attId of deletedAttachmentIds) await deleteAttachment(attId)
+        for (const att of pendingAttachments) {
+          await addAttachment(id, att.name, att.mimeType, att.dataUrl)
+        }
         clearDraft(draftKey)
         savedRef.current = true
         showToast('Quiet time updated')
         navigate(`/notes/${id}`)
       } else {
         const newId = await createSermonNote(data)
+        for (const att of pendingAttachments) {
+          await addAttachment(newId, att.name, att.mimeType, att.dataUrl)
+        }
         clearDraft(draftKey)
         savedRef.current = true
         showToast('Quiet time saved')
@@ -544,6 +603,66 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
               className={inputCls}
             />
           </div>
+        </section>
+
+        {/* ── Section 7: Photos ── */}
+        <section>
+          <p className={sectionLabelCls}>Photos</p>
+          <p className={sectionHelpCls}>
+            Attach a photo of handwritten notes or anything worth remembering. Photos are stored locally on this device only.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-3">
+            {existingAttachments.map(att => (
+              <div key={att.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-forest-light">
+                <img src={att.dataUrl} alt="Attachment" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExisting(att.id)}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                  aria-label="Remove photo"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+            {pendingAttachments.map(att => (
+              <div key={att.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gold/30">
+                <img src={att.dataUrl} alt="New attachment" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemovePending(att.id)}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                  aria-label="Remove photo"
+                >
+                  <X size={12} className="text-white" />
+                </button>
+              </div>
+            ))}
+            {totalAttachments < MAX_ATTACHMENTS && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={addingPhoto}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-forest-light flex flex-col items-center justify-center gap-1 text-ivory-dim hover:border-gold hover:text-gold transition-colors disabled:opacity-50"
+                aria-label="Add photo"
+              >
+                <ImagePlus size={20} strokeWidth={1.5} />
+                <span className="text-[10px]">Add</span>
+              </button>
+            )}
+          </div>
+          {addingPhoto && <p className="text-xs text-ivory-dim">Processing image…</p>}
+          {totalAttachments >= MAX_ATTACHMENTS && (
+            <p className="text-xs text-ivory-dim">Maximum {MAX_ATTACHMENTS} photos reached.</p>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleAddPhoto}
+            className="hidden"
+          />
         </section>
 
         <button

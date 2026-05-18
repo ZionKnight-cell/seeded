@@ -1,14 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Shield, Calendar, Info, Trash2,
   Download, Upload, Wrench, Wifi, Smartphone, BookOpen, ChevronDown, RotateCcw,
+  FileText,
 } from 'lucide-react'
 import { clearAllData, exportAllData, importAllData, repairData } from '../db/database'
 import { useToast } from '../components/Toast'
 import { usePWA } from '../hooks/usePWA'
 import { APP_VERSION } from '../lib/version'
 import { formatDate } from '../lib/dates'
+import { listDrafts, clearDraft } from '../lib/draft'
+import type { DraftSummary } from '../lib/draft'
 import HowSeededWorks from '../components/HowSeededWorks'
 import { ONBOARDING_KEY } from './Onboarding'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
@@ -40,7 +43,12 @@ export default function Settings() {
   const [importing, setImporting] = useState(false)
   const [repairing, setRepairing] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [drafts, setDrafts] = useState<DraftSummary[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setDrafts(listDrafts())
+  }, [])
 
   function handleResetOnboarding() {
     localStorage.removeItem(ONBOARDING_KEY)
@@ -229,9 +237,7 @@ export default function Settings() {
             <p className="text-sm font-medium text-ivory">Scripture Passages</p>
           </div>
           <p className="text-ivory-dim text-sm leading-relaxed">
-            Seeded doesn't include a Bible translation. Add references manually and tap "Open passage
-            externally" to read them in BibleGateway or your preferred Bible app. This keeps the app
-            simple, offline-first, and respectful of Bible translation licensing.
+            Seeded opens Scripture references externally and does not bundle Bible translations. Tap a passage to open it on BibleGateway, or use the Copy button to copy the reference. This keeps the app simple, offline-first, and respectful of Bible translation licensing.
           </p>
         </div>
       </div>
@@ -297,11 +303,65 @@ export default function Settings() {
         </div>
 
         <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
-          <p className="text-sm font-medium text-ivory mb-1.5">Note Drafts</p>
-          <p className="text-ivory-dim text-sm leading-relaxed">
-            Unsaved note drafts are saved locally on this device until you save or discard them.
-            Drafts are not included in your backup export.
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+              <FileText size={17} className="text-gold" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ivory">Note Drafts</p>
+              <p className="text-xs text-ivory-dim mt-0.5">
+                {drafts.length === 0 ? 'No unsaved drafts' : `${drafts.length} unsaved draft${drafts.length !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+          </div>
+          {drafts.length === 0 ? (
+            <p className="text-ivory-dim text-sm leading-relaxed">
+              Unsaved drafts are saved locally and will appear here. They are not included in backup exports.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {drafts.map(draft => {
+                const label = draft.type === 'new:sermon'
+                  ? 'New sermon note'
+                  : draft.type === 'new:quiet_time'
+                    ? 'New quiet time'
+                    : 'Unsaved edits'
+                const dest = draft.type === 'new:sermon'
+                  ? '/add/sermon'
+                  : draft.type === 'new:quiet_time'
+                    ? '/add/quiet-time'
+                    : `/notes/${draft.noteId}/edit`
+                return (
+                  <div key={draft.key} className="flex items-center justify-between gap-3 py-2 border-b border-forest-light last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-ivory-dim uppercase tracking-wide">{label}</p>
+                      {draft.title && (
+                        <p className="text-sm text-ivory truncate">{draft.title}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link
+                        to={dest}
+                        className="text-xs font-semibold text-gold border border-gold/40 px-3 py-1.5 rounded-lg"
+                      >
+                        Continue
+                      </Link>
+                      <button
+                        onClick={() => {
+                          clearDraft(draft.key)
+                          setDrafts(listDrafts())
+                          showToast('Draft deleted')
+                        }}
+                        className="text-xs text-ivory-dim border border-forest-light px-3 py-1.5 rounded-lg"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 

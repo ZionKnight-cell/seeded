@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Settings, BookOpen, Sun, Target, Heart, Lightbulb } from 'lucide-react'
-import { db } from '../db/database'
+import { Settings, BookOpen, Sun, Target, Heart, Lightbulb, Sprout } from 'lucide-react'
+import { db, createSampleNote } from '../db/database'
+import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
+import { getNoteType } from '../types'
 import HowSeededWorks from '../components/HowSeededWorks'
 import type { SermonNote, PrayerPoint, ActionStep } from '../types'
 
@@ -15,6 +17,10 @@ interface DashboardData {
   completedStepCount: number
   reflectionNote: SermonNote | undefined
   reflectionCount: number
+  sermonNotesThisMonth: number
+  qtNotesThisMonth: number
+  stepsReviewedThisWeek: number
+  prayersAnsweredThisMonth: number
 }
 
 const EMPTY_DATA: DashboardData = {
@@ -26,47 +32,86 @@ const EMPTY_DATA: DashboardData = {
   completedStepCount: 0,
   reflectionNote: undefined,
   reflectionCount: 0,
+  sermonNotesThisMonth: 0,
+  qtNotesThisMonth: 0,
+  stepsReviewedThisWeek: 0,
+  prayersAnsweredThisMonth: 0,
 }
 
 export default function Home() {
+  const { showToast } = useToast()
   const [data, setData] = useState<DashboardData>(EMPTY_DATA)
   const [ready, setReady] = useState(false)
+  const [addingSample, setAddingSample] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      const [notes, allPrayers, allSteps, totalNotes, completedSteps, allNotes] = await Promise.all([
-        db.sermonNotes.orderBy('sermonDate').reverse().limit(1).toArray(),
-        db.prayerPoints.toArray(),
-        db.actionSteps.toArray(),
-        db.sermonNotes.count(),
-        db.actionSteps.toArray().then(s => s.filter(a => a.status === 'done').length),
-        db.sermonNotes.orderBy('sermonDate').reverse().toArray(),
-      ])
+  const load = useCallback(async () => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const weekAgo = new Date(now)
+    weekAgo.setDate(now.getDate() - 7)
 
-      const prayers = allPrayers.filter(p => p.status === 'active')
-      const steps = allSteps.filter(s => s.status !== 'done')
+    const [notes, allPrayers, allSteps, totalNotes, completedSteps, allNotes] = await Promise.all([
+      db.sermonNotes.orderBy('sermonDate').reverse().limit(1).toArray(),
+      db.prayerPoints.toArray(),
+      db.actionSteps.toArray(),
+      db.sermonNotes.count(),
+      db.actionSteps.toArray().then(s => s.filter(a => a.status === 'done').length),
+      db.sermonNotes.orderBy('sermonDate').reverse().toArray(),
+    ])
 
-      const needingReflection = allNotes.filter(
-        n => !!(n.fullNotes && (!n.prayerPoint || !n.weeklyActionStep))
-      )
+    const prayers = allPrayers.filter(p => p.status === 'active')
+    const steps = allSteps.filter(s => s.status !== 'done')
 
-      setData({
-        latestNote: notes[0],
-        activeStep: steps[0],
-        activePrayer: prayers[0],
-        totalNotes,
-        activePrayerCount: prayers.length,
-        completedStepCount: completedSteps,
-        reflectionNote: needingReflection[0],
-        reflectionCount: needingReflection.length,
-      })
-      setReady(true)
-    }
-    load()
+    const needingReflection = allNotes.filter(
+      n => !!(n.fullNotes && (!n.prayerPoint || !n.weeklyActionStep))
+    )
+
+    const notesThisMonth = allNotes.filter(n => new Date(n.createdAt) >= monthStart)
+    const sermonNotesThisMonth = notesThisMonth.filter(n => getNoteType(n) === 'sermon').length
+    const qtNotesThisMonth = notesThisMonth.filter(n => getNoteType(n) === 'quiet_time').length
+
+    const stepsReviewedThisWeek = allSteps.filter(s =>
+      s.status !== 'not_started' && new Date(s.updatedAt) >= weekAgo
+    ).length
+
+    const prayersAnsweredThisMonth = allPrayers.filter(p =>
+      p.status === 'answered' && new Date(p.updatedAt) >= monthStart
+    ).length
+
+    setData({
+      latestNote: notes[0],
+      activeStep: steps[0],
+      activePrayer: prayers[0],
+      totalNotes,
+      activePrayerCount: prayers.length,
+      completedStepCount: completedSteps,
+      reflectionNote: needingReflection[0],
+      reflectionCount: needingReflection.length,
+      sermonNotesThisMonth,
+      qtNotesThisMonth,
+      stepsReviewedThisWeek,
+      prayersAnsweredThisMonth,
+    })
+    setReady(true)
   }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function handleAddSample() {
+    setAddingSample(true)
+    try {
+      await createSampleNote()
+      showToast('Sample note added')
+      await load()
+    } catch {
+      showToast('Could not add sample note', 'error')
+    }
+    setAddingSample(false)
+  }
 
   const { latestNote, activeStep, activePrayer, totalNotes, activePrayerCount, completedStepCount } = data
   const isEmpty = ready && totalNotes === 0
+  const hasConsistencyData = data.sermonNotesThisMonth > 0 || data.qtNotesThisMonth > 0 || data.stepsReviewedThisWeek > 0 || data.prayersAnsweredThisMonth > 0
 
   return (
     <div className="px-5 pt-6 pb-4">
@@ -118,11 +163,27 @@ export default function Home() {
               Start with a sermon note from church or a quiet time from your personal devotion. Capture it, reflect on it, pray through it, and choose one growth step for the week.
             </p>
           </div>
-          <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light mb-5">
             <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-5">
               How Seeded works
             </p>
             <HowSeededWorks />
+          </div>
+          <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light/60">
+            <div className="flex items-center gap-2 mb-2">
+              <Sprout size={14} className="text-gold" strokeWidth={1.5} />
+              <p className="text-sm font-medium text-ivory">See an example</p>
+            </div>
+            <p className="text-ivory-dim text-sm leading-relaxed mb-4">
+              Not sure where to start? Add a sample note to see what a complete entry looks like — with a passage, reflection, prayer, and growth step.
+            </p>
+            <button
+              onClick={handleAddSample}
+              disabled={addingSample}
+              className="text-xs font-semibold text-gold border border-gold/40 px-4 py-2 rounded-xl disabled:opacity-60"
+            >
+              {addingSample ? 'Adding…' : 'Add sample note'}
+            </button>
           </div>
         </>
       ) : (
@@ -224,7 +285,7 @@ export default function Home() {
           </section>
 
           {/* Stats */}
-          <section>
+          <section className="mb-8">
             <h2 className="text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-3">
               Your Journey
             </h2>
@@ -243,6 +304,47 @@ export default function Home() {
               </div>
             </div>
           </section>
+
+          {/* Consistency — gentle, no guilt */}
+          {hasConsistencyData && (
+            <section>
+              <h2 className="text-[11px] font-semibold text-ivory-dim uppercase tracking-widest mb-3">
+                This Month
+              </h2>
+              <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+                <div className="space-y-2 mb-4">
+                  {data.sermonNotesThisMonth > 0 && (
+                    <p className="text-ivory-dim text-sm">
+                      You wrote{' '}
+                      <span className="text-ivory font-medium">{data.sermonNotesThisMonth}</span>{' '}
+                      sermon note{data.sermonNotesThisMonth !== 1 ? 's' : ''} this month.
+                    </p>
+                  )}
+                  {data.qtNotesThisMonth > 0 && (
+                    <p className="text-ivory-dim text-sm">
+                      You wrote{' '}
+                      <span className="text-ivory font-medium">{data.qtNotesThisMonth}</span>{' '}
+                      quiet time {data.qtNotesThisMonth !== 1 ? 'entries' : 'entry'} this month.
+                    </p>
+                  )}
+                  {data.stepsReviewedThisWeek > 0 && (
+                    <p className="text-ivory-dim text-sm">
+                      You reviewed{' '}
+                      <span className="text-ivory font-medium">{data.stepsReviewedThisWeek}</span>{' '}
+                      growth step{data.stepsReviewedThisWeek !== 1 ? 's' : ''} this week.
+                    </p>
+                  )}
+                  {data.prayersAnsweredThisMonth > 0 && (
+                    <p className="text-ivory-dim text-sm">
+                      <span className="text-ivory font-medium">{data.prayersAnsweredThisMonth}</span>{' '}
+                      prayer{data.prayersAnsweredThisMonth !== 1 ? 's' : ''} answered this month — praise God.
+                    </p>
+                  )}
+                </div>
+                <p className="text-gold/60 text-xs italic">Every note is a seed.</p>
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

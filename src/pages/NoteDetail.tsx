@@ -11,19 +11,58 @@ import {
   Target,
   Lightbulb,
   ExternalLink,
+  Copy,
+  Share2,
+  Download,
+  Printer,
+  X,
+  Image,
 } from 'lucide-react'
-import { getSermonNote, deleteSermonNote, updateSermonNote } from '../db/database'
+import { getSermonNote, deleteSermonNote, updateSermonNote, getAttachments } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
 import { buildBibleSearchUrl, parseScriptureReferences } from '../lib/bibleLinks'
+import { noteToText, downloadNoteAsText, shareNote } from '../lib/noteExport'
 import { CATEGORY_LABELS, FOLLOW_UP_LABELS, getNoteType } from '../types'
-import type { SermonNote, FollowUpStatus } from '../types'
+import type { SermonNote, FollowUpStatus, NoteAttachment } from '../types'
 
 function Card({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
       <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-3">{label}</p>
       {children}
+    </div>
+  )
+}
+
+function PassageActions({ reference }: { reference: string }) {
+  const { showToast } = useToast()
+  async function copyRef() {
+    try {
+      await navigator.clipboard.writeText(reference)
+      showToast('Reference copied')
+    } catch {
+      showToast('Could not copy — please copy manually', 'error')
+    }
+  }
+  return (
+    <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+      <a
+        href={buildBibleSearchUrl(reference)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 text-xs text-gold/60 hover:text-gold transition-colors"
+      >
+        <ExternalLink size={10} strokeWidth={2} />
+        Open externally
+      </a>
+      <button
+        onClick={copyRef}
+        className="flex items-center gap-1 text-xs text-gold/60 hover:text-gold transition-colors"
+      >
+        <Copy size={10} strokeWidth={2} />
+        Copy
+      </button>
     </div>
   )
 }
@@ -37,15 +76,21 @@ export default function NoteDetail() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [note, setNote] = useState<SermonNote | null>(null)
+  const [attachments, setAttachments] = useState<NoteAttachment[]>([])
   const [notFound, setNotFound] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!id) return
     const n = await getSermonNote(id)
     if (!n) setNotFound(true)
-    else setNote(n)
+    else {
+      setNote(n)
+      getAttachments(id).then(setAttachments)
+    }
   }, [id])
 
   useEffect(() => { load() }, [load])
@@ -72,6 +117,38 @@ export default function NoteDetail() {
     navigate('/notes')
   }
 
+  async function handleShare() {
+    if (!note) return
+    const result = await shareNote(note)
+    if (result === 'unavailable') {
+      handleDownload()
+    }
+    setShowExport(false)
+  }
+
+  function handleDownload() {
+    if (!note) return
+    downloadNoteAsText(note)
+    setShowExport(false)
+    showToast('Note exported')
+  }
+
+  async function handleCopyText() {
+    if (!note) return
+    try {
+      await navigator.clipboard.writeText(noteToText(note))
+      showToast('Note copied to clipboard')
+    } catch {
+      showToast('Could not copy — try Download instead', 'error')
+    }
+    setShowExport(false)
+  }
+
+  function handlePrint() {
+    setShowExport(false)
+    setTimeout(() => window.print(), 100)
+  }
+
   if (notFound) {
     return (
       <div className="px-5 pt-12 text-center">
@@ -96,7 +173,7 @@ export default function NoteDetail() {
   return (
     <div className="px-5 pt-6 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 print:hidden">
         <Link to="/notes" className="text-ivory-dim -ml-1 p-1" aria-label="Back">
           <ChevronLeft size={24} strokeWidth={1.5} />
         </Link>
@@ -107,6 +184,13 @@ export default function NoteDetail() {
             aria-label="Toggle favorite"
           >
             <Star size={20} strokeWidth={1.5} fill={note.isFavorite ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={() => setShowExport(true)}
+            className="text-ivory-dim hover:text-ivory transition-colors p-1.5"
+            aria-label="Export or share note"
+          >
+            <Share2 size={20} strokeWidth={1.5} />
           </button>
           <Link
             to={`/notes/${note.id}/edit`}
@@ -125,6 +209,11 @@ export default function NoteDetail() {
         </div>
       </div>
 
+      {/* Print header (hidden on screen) */}
+      <div className="hidden print:block mb-6">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-1 opacity-60">Seeded — {isQT ? 'Quiet Time' : 'Sermon Note'}</p>
+      </div>
+
       {/* Title & Meta */}
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold text-ivory tracking-tight leading-tight mb-3">
@@ -135,6 +224,11 @@ export default function NoteDetail() {
           {!isQT && note.churchName && <span>· {note.churchName}</span>}
           {!isQT && note.preacherName && <span>· {note.preacherName}</span>}
         </div>
+        {!isQT && note.seriesName && (
+          <p className="text-xs text-ivory-dim mt-1 italic">
+            {note.seriesName}{note.seriesPart ? ` — ${note.seriesPart}` : ''}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2 mt-2.5">
           {isQT && (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold bg-forest-light px-3 py-1 rounded-full uppercase tracking-widest">
@@ -160,31 +254,15 @@ export default function NoteDetail() {
                 {note.mainBiblePassage && (
                   <>
                     <p className="text-ivory text-sm font-medium">{note.mainBiblePassage}</p>
-                    <a
-                      href={buildBibleSearchUrl(note.mainBiblePassage)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 mt-1.5 text-xs text-gold/60 hover:text-gold transition-colors w-fit"
-                    >
-                      <ExternalLink size={10} strokeWidth={2} />
-                      Open passage externally
-                    </a>
+                    <PassageActions reference={note.mainBiblePassage} />
                   </>
                 )}
                 {!isQT && note.otherScriptureReferences && (
                   <div className="mt-3 space-y-2">
                     {parseScriptureReferences(note.otherScriptureReferences).map(ref => (
-                      <div key={ref} className="flex items-center justify-between gap-3">
+                      <div key={ref}>
                         <p className="text-ivory-muted text-sm">{ref}</p>
-                        <a
-                          href={buildBibleSearchUrl(ref)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-gold/60 hover:text-gold transition-colors shrink-0"
-                        >
-                          <ExternalLink size={10} strokeWidth={2} />
-                          Open externally
-                        </a>
+                        <PassageActions reference={ref} />
                       </div>
                     ))}
                   </div>
@@ -234,7 +312,7 @@ export default function NoteDetail() {
 
         {/* Reflection prompt */}
         {needsReflection(note) && (
-          <div className="bg-forest-mid rounded-2xl p-5 border border-gold/20">
+          <div className="bg-forest-mid rounded-2xl p-5 border border-gold/20 print:hidden">
             <div className="flex items-start gap-3">
               <Lightbulb size={15} className="text-gold shrink-0 mt-0.5" strokeWidth={1.5} />
               <div className="flex-1 min-w-0">
@@ -275,7 +353,7 @@ export default function NoteDetail() {
             <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">
               Follow-up Status
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 print:hidden">
               {(Object.entries(FOLLOW_UP_LABELS) as [FollowUpStatus, string][]).map(([k, v]) => (
                 <button
                   key={k}
@@ -290,6 +368,7 @@ export default function NoteDetail() {
                 </button>
               ))}
             </div>
+            <p className="hidden print:block text-xs text-ivory-dim">{FOLLOW_UP_LABELS[note.followUpStatus]}</p>
           </Card>
         )}
 
@@ -319,6 +398,24 @@ export default function NoteDetail() {
           </Card>
         )}
 
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <Card label="Photos">
+            <div className="flex flex-wrap gap-3">
+              {attachments.map(att => (
+                <button
+                  key={att.id}
+                  onClick={() => setLightboxSrc(att.dataUrl)}
+                  className="w-24 h-24 rounded-xl overflow-hidden border border-forest-light focus:outline-none focus:ring-2 focus:ring-gold"
+                  aria-label="View photo"
+                >
+                  <img src={att.dataUrl} alt="Attachment" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Tags */}
         {note.tags && note.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
@@ -340,9 +437,55 @@ export default function NoteDetail() {
         </p>
       </div>
 
+      {/* Export / Share Modal */}
+      {showExport && (
+        <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-5 print:hidden">
+          <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold text-ivory">Share or Export</h2>
+              <button onClick={() => setShowExport(false)} className="text-ivory-dim p-1 -mr-1">
+                <X size={20} strokeWidth={1.5} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {typeof navigator.share === 'function' && (
+                <button
+                  onClick={handleShare}
+                  className="w-full flex items-center gap-3 bg-gold text-forest font-semibold px-4 py-3 rounded-xl text-sm"
+                >
+                  <Share2 size={16} strokeWidth={2} />
+                  Share note
+                </button>
+              )}
+              <button
+                onClick={handleDownload}
+                className="w-full flex items-center gap-3 border border-forest-light text-ivory px-4 py-3 rounded-xl text-sm"
+              >
+                <Download size={16} strokeWidth={1.5} />
+                Download as text (.txt)
+              </button>
+              <button
+                onClick={handleCopyText}
+                className="w-full flex items-center gap-3 border border-forest-light text-ivory px-4 py-3 rounded-xl text-sm"
+              >
+                <Copy size={16} strokeWidth={1.5} />
+                Copy to clipboard
+              </button>
+              <button
+                onClick={handlePrint}
+                className="w-full flex items-center gap-3 border border-forest-light text-ivory px-4 py-3 rounded-xl text-sm"
+              >
+                <Printer size={16} strokeWidth={1.5} />
+                Print / Save as PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirm Modal */}
       {showDelete && (
-        <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-5">
+        <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-5 print:hidden">
           <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold text-ivory mb-2">Delete this note?</h2>
             <p className="text-ivory-dim text-sm mb-6 leading-relaxed">
@@ -363,6 +506,33 @@ export default function NoteDetail() {
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 print:hidden"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            className="absolute top-5 right-5 text-white/70 hover:text-white p-2"
+            aria-label="Close"
+          >
+            <X size={24} strokeWidth={1.5} />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Full size"
+            className="max-w-full max-h-full rounded-xl object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+            <span className="text-white/50 text-xs flex items-center gap-1.5">
+              <Image size={12} />
+              Stored locally on this device
+            </span>
           </div>
         </div>
       )}

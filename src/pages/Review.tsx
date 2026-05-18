@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { TrendingUp, ChevronDown, BookOpen, Sun } from 'lucide-react'
 import { getAllActionSteps, updateActionStatus, updateActionReflection } from '../db/database'
@@ -33,6 +33,15 @@ const FILTER_EMPTY: Record<FollowUpStatus | 'all', string> = {
   forgot: 'Nothing marked as forgotten.',
 }
 
+function getWeekStart(): Date {
+  const now = new Date()
+  const day = now.getDay()
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - day)
+  weekStart.setHours(0, 0, 0, 0)
+  return weekStart
+}
+
 export default function Review() {
   const { showToast } = useToast()
   const [steps, setSteps] = useState<ActionStep[]>([])
@@ -53,6 +62,23 @@ export default function Review() {
 
   const filtered = filter === 'all' ? steps : steps.filter(s => s.status === filter)
 
+  const weeklySummary = useMemo(() => {
+    const weekStart = getWeekStart()
+    const thisWeek = steps.filter(s => new Date(s.createdAt) >= weekStart)
+    const reflectionsWritten = steps.filter(s => {
+      const updated = new Date(s.updatedAt)
+      return updated >= weekStart && s.reflection?.trim()
+    }).length
+    return {
+      total: thisWeek.length,
+      done: thisWeek.filter(s => s.status === 'done').length,
+      inProgress: thisWeek.filter(s => s.status === 'in_progress' || s.status === 'still_working').length,
+      notStarted: thisWeek.filter(s => s.status === 'not_started').length,
+      forgot: thisWeek.filter(s => s.status === 'forgot').length,
+      reflectionsWritten,
+    }
+  }, [steps])
+
   async function handleStatus(id: string, status: FollowUpStatus) {
     await updateActionStatus(id, status)
     setRefreshKey(k => k + 1)
@@ -72,6 +98,50 @@ export default function Review() {
       <p className="text-ivory-dim text-sm mb-5 leading-relaxed">
         Track how you practised what you heard. Update your growth steps here.
       </p>
+
+      {/* Weekly Summary Card */}
+      {steps.length > 0 && weeklySummary.total > 0 && (
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light mb-5">
+          <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-3">This Week</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-semibold text-ivory">{weeklySummary.total}</span>
+              <span className="text-xs text-ivory-dim">new step{weeklySummary.total !== 1 ? 's' : ''}</span>
+            </div>
+            {weeklySummary.done > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-emerald-400">{weeklySummary.done}</span>
+                <span className="text-xs text-ivory-dim">done</span>
+              </div>
+            )}
+            {weeklySummary.inProgress > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-gold">{weeklySummary.inProgress}</span>
+                <span className="text-xs text-ivory-dim">in progress</span>
+              </div>
+            )}
+            {weeklySummary.notStarted > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-ivory-dim">{weeklySummary.notStarted}</span>
+                <span className="text-xs text-ivory-dim">not started</span>
+              </div>
+            )}
+            {weeklySummary.forgot > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-ivory-dim">{weeklySummary.forgot}</span>
+                <span className="text-xs text-ivory-dim">forgot</span>
+              </div>
+            )}
+            {weeklySummary.reflectionsWritten > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-ivory">{weeklySummary.reflectionsWritten}</span>
+                <span className="text-xs text-ivory-dim">reflection{weeklySummary.reflectionsWritten !== 1 ? 's' : ''} written</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gold/60 italic">Growth is practiced one faithful step at a time.</p>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none -mx-5 px-5">
