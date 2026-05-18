@@ -40,7 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               className={`px-5 py-3 rounded-2xl text-sm font-medium shadow-xl pointer-events-auto max-w-xs w-full text-center ${
                 t.type === 'error'
                   ? 'bg-red-950 text-red-200 border border-red-800'
-                  : 'bg-[#1E4A35] text-ivory border border-[#2A5E45]'
+                  : 'bg-forest-mid text-ivory border border-forest-light'
               }`}
             >
               {t.message}

@@ -183,6 +183,18 @@ export default function Settings() {
         <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
+              <Smartphone size={17} className="text-gold" strokeWidth={1.5} />
+            </div>
+            <p className="text-sm font-medium text-ivory">Appearance</p>
+          </div>
+          <p className="text-ivory-dim text-sm leading-relaxed">
+            Seeded follows your device's light or dark appearance automatically. Change it in your system settings.
+          </p>
+        </div>
+
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
               <Info size={17} className="text-gold" strokeWidth={1.5} />
             </div>
             <div>

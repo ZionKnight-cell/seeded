@@ -8,7 +8,7 @@ export default function AppShell() {
   const isNative = Capacitor.isNativePlatform()
 
   return (
-    <div className="min-h-[100svh] bg-forest text-ivory flex flex-col">
+    <div className="min-h-[100svh] text-ivory flex flex-col" style={{ background: 'var(--app-bg)' }}>
       {needRefresh && !isNative && (
         <div className="bg-forest-dark border-b border-gold/30 px-5 py-3 flex items-center justify-between gap-4 shrink-0">
           <p className="text-ivory text-xs leading-relaxed">

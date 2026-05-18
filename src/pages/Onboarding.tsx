@@ -27,8 +27,8 @@ export default function Onboarding() {
 
   return (
     <div
-      className="min-h-screen bg-forest px-5 pt-12 flex flex-col"
-      style={{ paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
+      className="min-h-screen px-5 pt-12 flex flex-col"
+      style={{ background: 'var(--app-bg)', paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
     >
       <img src="/seeded-logo.png" alt="Seeded" className="h-8 w-auto object-contain mb-8" />
 
