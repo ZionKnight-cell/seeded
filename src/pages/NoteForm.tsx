@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, useParams, Link, useBlocker } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ExternalLink, Star } from 'lucide-react'
 import { createSermonNote, updateSermonNote, getSermonNote } from '../db/database'
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
-import { buildBibleSearchUrl } from '../lib/bibleLinks'
+import { buildBibleSearchUrl, parseScriptureReferences } from '../lib/bibleLinks'
 import { getDraft, saveDraft, clearDraft } from '../lib/draft'
 import { ALL_CATEGORIES, CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
 import type { SermonCategory, FollowUpStatus } from '../types'
@@ -65,6 +65,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const [loaded, setLoaded] = useState(mode === 'add')
   const [showDraftRecovery, setShowDraftRecovery] = useState(false)
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saved' | 'restored'>('idle')
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const baseFormRef = useRef<FormState>(makeEmpty())
   const savedRef = useRef(false)
@@ -72,10 +73,8 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const draftKey = mode === 'edit' && id ? `seeded:draft:edit:${id}` : 'seeded:draft:new:sermon'
-
+  const backDest = mode === 'edit' && id ? `/notes/${id}` : '/add'
   const isDirty = JSON.stringify(form) !== JSON.stringify(baseFormRef.current)
-  const isDirtyRef = useRef(false)
-  isDirtyRef.current = isDirty
 
   // Add mode: check for existing draft on mount
   useEffect(() => {
@@ -134,31 +133,14 @@ export default function NoteForm({ mode = 'add' }: Props) {
   // Warn on browser close/refresh
   useEffect(() => {
     function onBeforeUnload(e: BeforeUnloadEvent) {
-      if (isDirtyRef.current && !savedRef.current) {
+      if (isDirty && !savedRef.current) {
         e.preventDefault()
         e.returnValue = ''
       }
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [])
-
-  // Intercept in-app navigation
-  const blocker = useBlocker(
-    useCallback(
-      ({ currentLocation, nextLocation }) =>
-        isDirtyRef.current && !savedRef.current && currentLocation.pathname !== nextLocation.pathname,
-      []
-    )
-  )
-
-  // Ensure draft is saved before blocker modal shows
-  useEffect(() => {
-    if (blocker.state === 'blocked' && loaded) {
-      saveDraft(draftKey, form)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocker.state])
+  }, [isDirty])
 
   const set = (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -166,6 +148,20 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
   function applyToField(field: keyof FormState, text: string) {
     setForm(prev => ({ ...prev, [field]: text }))
+  }
+
+  function handleBack() {
+    if (isDirty && !savedRef.current) {
+      saveDraft(draftKey, form)
+      setShowLeaveConfirm(true)
+    } else {
+      navigate(backDest)
+    }
+  }
+
+  function handleLeave() {
+    setShowLeaveConfirm(false)
+    navigate(backDest)
   }
 
   function handleRestoreDraft() {
@@ -242,9 +238,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const sectionHelpCls = 'text-xs text-ivory-dim leading-relaxed mb-4'
   const fieldHintCls = 'mt-1.5 text-xs text-ivory-dim leading-relaxed'
 
-  const otherRefs = form.otherScriptureReferences.trim()
-    ? form.otherScriptureReferences.split(',').map(r => r.trim()).filter(Boolean)
-    : []
+  const otherRefs = parseScriptureReferences(form.otherScriptureReferences)
 
   if (!loaded) {
     return (
@@ -259,13 +253,14 @@ export default function NoteForm({ mode = 'add' }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <Link
-            to={mode === 'edit' && id ? `/notes/${id}` : '/add'}
+          <button
+            type="button"
+            onClick={handleBack}
             className="text-ivory-dim -ml-1 p-1"
             aria-label="Back"
           >
             <ChevronLeft size={24} strokeWidth={1.5} />
-          </Link>
+          </button>
           <h1 className="text-xl font-semibold text-ivory tracking-tight">
             {mode === 'edit' ? 'Edit Note' : 'New Sermon Note'}
           </h1>
@@ -393,13 +388,14 @@ export default function NoteForm({ mode = 'add' }: Props) {
             </div>
             <div>
               <label className={labelCls}>Other Scriptures</label>
-              <input
-                type="text"
+              <textarea
                 value={form.otherScriptureReferences}
                 onChange={set('otherScriptureReferences')}
-                placeholder="e.g. Romans 8:1, Psalm 23"
-                className={inputCls}
+                rows={2}
+                placeholder={'e.g. Romans 8:1, Psalm 23\nor one reference per line'}
+                className={textareaCls}
               />
+              <p className={fieldHintCls}>Separate references with commas, semicolons, or new lines.</p>
               {otherRefs.length > 0 && (
                 <div className="mt-2 space-y-1.5">
                   {otherRefs.map(ref => (
@@ -573,7 +569,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
       </div>
 
       {/* Leave confirmation */}
-      {blocker.state === 'blocked' && (
+      {showLeaveConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-5">
           <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold text-ivory mb-2">Leave without saving?</h2>
@@ -583,13 +579,13 @@ export default function NoteForm({ mode = 'add' }: Props) {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => blocker.reset()}
+                onClick={() => setShowLeaveConfirm(false)}
                 className="flex-1 border border-forest-light text-ivory py-3 rounded-xl text-sm font-medium"
               >
                 Stay
               </button>
               <button
-                onClick={() => blocker.proceed()}
+                onClick={handleLeave}
                 className="flex-1 bg-forest-light text-ivory py-3 rounded-xl text-sm font-semibold"
               >
                 Leave

@@ -15,7 +15,7 @@ import {
 import { getSermonNote, deleteSermonNote, updateSermonNote } from '../db/database'
 import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
-import { buildBibleSearchUrl } from '../lib/bibleLinks'
+import { buildBibleSearchUrl, parseScriptureReferences } from '../lib/bibleLinks'
 import { CATEGORY_LABELS, FOLLOW_UP_LABELS, getNoteType } from '../types'
 import type { SermonNote, FollowUpStatus } from '../types'
 
@@ -173,7 +173,7 @@ export default function NoteDetail() {
                 )}
                 {!isQT && note.otherScriptureReferences && (
                   <div className="mt-3 space-y-2">
-                    {note.otherScriptureReferences.split(',').map(r => r.trim()).filter(Boolean).map(ref => (
+                    {parseScriptureReferences(note.otherScriptureReferences).map(ref => (
                       <div key={ref} className="flex items-center justify-between gap-3">
                         <p className="text-ivory-muted text-sm">{ref}</p>
                         <a
