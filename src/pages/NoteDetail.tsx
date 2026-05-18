@@ -172,7 +172,22 @@ export default function NoteDetail() {
                   </>
                 )}
                 {!isQT && note.otherScriptureReferences && (
-                  <p className="text-ivory-muted text-sm mt-2">{note.otherScriptureReferences}</p>
+                  <div className="mt-3 space-y-2">
+                    {note.otherScriptureReferences.split(',').map(r => r.trim()).filter(Boolean).map(ref => (
+                      <div key={ref} className="flex items-center justify-between gap-3">
+                        <p className="text-ivory-muted text-sm">{ref}</p>
+                        <a
+                          href={buildBibleSearchUrl(ref)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-gold/60 hover:text-gold transition-colors shrink-0"
+                        >
+                          <ExternalLink size={10} strokeWidth={2} />
+                          Open externally
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

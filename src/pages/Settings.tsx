@@ -283,6 +283,14 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        <div className="bg-forest-mid rounded-2xl p-5 border border-forest-light">
+          <p className="text-sm font-medium text-ivory mb-1.5">Note Drafts</p>
+          <p className="text-ivory-dim text-sm leading-relaxed">
+            Unsaved note drafts are saved locally on this device until you save or discard them.
+            Drafts are not included in your backup export.
+          </p>
+        </div>
       </div>
 
       {/* Backup & Restore */}

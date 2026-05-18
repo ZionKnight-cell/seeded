@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, useParams, Link, useBlocker } from 'react-router-dom'
 import { ChevronLeft, ExternalLink, Star } from 'lucide-react'
 import { createSermonNote, updateSermonNote, getSermonNote } from '../db/database'
 import { useToast } from '../components/Toast'
 import { todayIso } from '../lib/dates'
 import { buildBibleSearchUrl } from '../lib/bibleLinks'
+import { getDraft, saveDraft, clearDraft } from '../lib/draft'
 import { ALL_CATEGORIES, CATEGORY_LABELS, FOLLOW_UP_LABELS } from '../types'
 import type { SermonCategory, FollowUpStatus } from '../types'
 import ReflectionHelper from '../components/ReflectionHelper'
@@ -62,13 +63,34 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(mode === 'add')
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false)
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saved' | 'restored'>('idle')
   const titleRef = useRef<HTMLInputElement>(null)
+  const baseFormRef = useRef<FormState>(makeEmpty())
+  const savedRef = useRef(false)
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  const draftKey = mode === 'edit' && id ? `seeded:draft:edit:${id}` : 'seeded:draft:new:sermon'
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(baseFormRef.current)
+  const isDirtyRef = useRef(false)
+  isDirtyRef.current = isDirty
+
+  // Add mode: check for existing draft on mount
+  useEffect(() => {
+    if (mode === 'add' && getDraft(draftKey)) {
+      setShowDraftRecovery(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Edit mode: load note then check for draft
   useEffect(() => {
     if (mode === 'edit' && id) {
       getSermonNote(id).then(note => {
         if (!note) { navigate('/notes'); return }
-        setForm({
+        const f: FormState = {
           title: note.title,
           sermonDate: note.sermonDate.split('T')[0],
           churchName: note.churchName ?? '',
@@ -85,11 +107,58 @@ export default function NoteForm({ mode = 'add' }: Props) {
           weeklyActionStep: note.weeklyActionStep ?? '',
           followUpStatus: note.followUpStatus,
           isFavorite: note.isFavorite,
-        })
+        }
+        setForm(f)
+        baseFormRef.current = f
+        if (getDraft(draftKey)) setShowDraftRecovery(true)
         setLoaded(true)
       })
     }
-  }, [mode, id, navigate])
+  }, [mode, id, navigate, draftKey])
+
+  // Debounced autosave
+  useEffect(() => {
+    if (!loaded || !isDirty || savedRef.current || showDraftRecovery) return
+    clearTimeout(draftTimerRef.current)
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft(draftKey, form)
+      setDraftStatus('saved')
+      clearTimeout(statusTimerRef.current)
+      statusTimerRef.current = setTimeout(() => {
+        setDraftStatus(s => s === 'saved' ? 'idle' : s)
+      }, 2000)
+    }, 800)
+    return () => clearTimeout(draftTimerRef.current)
+  }, [form, loaded, isDirty, showDraftRecovery, draftKey])
+
+  // Warn on browser close/refresh
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirtyRef.current && !savedRef.current) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
+  // Intercept in-app navigation
+  const blocker = useBlocker(
+    useCallback(
+      ({ currentLocation, nextLocation }) =>
+        isDirtyRef.current && !savedRef.current && currentLocation.pathname !== nextLocation.pathname,
+      []
+    )
+  )
+
+  // Ensure draft is saved before blocker modal shows
+  useEffect(() => {
+    if (blocker.state === 'blocked' && loaded) {
+      saveDraft(draftKey, form)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocker.state])
 
   const set = (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -97,6 +166,22 @@ export default function NoteForm({ mode = 'add' }: Props) {
 
   function applyToField(field: keyof FormState, text: string) {
     setForm(prev => ({ ...prev, [field]: text }))
+  }
+
+  function handleRestoreDraft() {
+    const draft = getDraft<FormState>(draftKey)
+    if (draft) {
+      setForm(draft)
+      setDraftStatus('restored')
+      clearTimeout(statusTimerRef.current)
+      statusTimerRef.current = setTimeout(() => setDraftStatus('idle'), 3000)
+    }
+    setShowDraftRecovery(false)
+  }
+
+  function handleDiscardDraft() {
+    clearDraft(draftKey)
+    setShowDraftRecovery(false)
   }
 
   async function handleSave() {
@@ -132,10 +217,14 @@ export default function NoteForm({ mode = 'add' }: Props) {
     try {
       if (mode === 'edit' && id) {
         await updateSermonNote(id, data)
+        clearDraft(draftKey)
+        savedRef.current = true
         showToast('Note updated')
         navigate(`/notes/${id}`)
       } else {
         const newId = await createSermonNote(data)
+        clearDraft(draftKey)
+        savedRef.current = true
         showToast('Sermon note saved')
         navigate(`/notes/${newId}`)
       }
@@ -153,6 +242,10 @@ export default function NoteForm({ mode = 'add' }: Props) {
   const sectionHelpCls = 'text-xs text-ivory-dim leading-relaxed mb-4'
   const fieldHintCls = 'mt-1.5 text-xs text-ivory-dim leading-relaxed'
 
+  const otherRefs = form.otherScriptureReferences.trim()
+    ? form.otherScriptureReferences.split(',').map(r => r.trim()).filter(Boolean)
+    : []
+
   if (!loaded) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -164,7 +257,7 @@ export default function NoteForm({ mode = 'add' }: Props) {
   return (
     <div className="px-5 pt-6 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <Link
             to={mode === 'edit' && id ? `/notes/${id}` : '/add'}
@@ -177,15 +270,50 @@ export default function NoteForm({ mode = 'add' }: Props) {
             {mode === 'edit' ? 'Edit Note' : 'New Sermon Note'}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setForm(f => ({ ...f, isFavorite: !f.isFavorite }))}
-          className={`p-1 -mr-1 transition-colors ${form.isFavorite ? 'text-gold' : 'text-ivory-dim'}`}
-          aria-label="Toggle favorite"
-        >
-          <Star size={22} strokeWidth={1.5} fill={form.isFavorite ? 'currentColor' : 'none'} />
-        </button>
+        <div className="flex items-center gap-2">
+          {draftStatus !== 'idle' && (
+            <span className="text-[10px] text-ivory-dim">
+              {draftStatus === 'restored' ? 'Draft restored' : 'Draft saved'}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setForm(f => ({ ...f, isFavorite: !f.isFavorite }))}
+            className={`p-1 -mr-1 transition-colors ${form.isFavorite ? 'text-gold' : 'text-ivory-dim'}`}
+            aria-label="Toggle favorite"
+          >
+            <Star size={22} strokeWidth={1.5} fill={form.isFavorite ? 'currentColor' : 'none'} />
+          </button>
+        </div>
       </div>
+
+      {/* Draft recovery */}
+      {showDraftRecovery && (
+        <div className="bg-forest-mid border border-gold/25 rounded-2xl px-5 py-4 mb-6 mt-4">
+          <p className="text-sm font-medium text-ivory mb-1">You have an unsaved draft.</p>
+          <p className="text-xs text-ivory-dim mb-3 leading-relaxed">
+            {mode === 'edit'
+              ? 'Restore your unsaved edits, or discard them and start from the saved note.'
+              : 'Restore your draft, or discard it and start fresh.'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRestoreDraft}
+              className="text-xs font-semibold text-forest bg-gold px-4 py-2 rounded-lg"
+            >
+              Restore draft
+            </button>
+            <button
+              onClick={handleDiscardDraft}
+              className="text-xs text-ivory-dim border border-forest-light px-4 py-2 rounded-lg"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showDraftRecovery && <div className="mb-6" />}
 
       {error && (
         <div className="bg-red-900/30 border border-red-700/40 text-red-300 text-sm rounded-xl px-4 py-3 mb-6">
@@ -272,6 +400,22 @@ export default function NoteForm({ mode = 'add' }: Props) {
                 placeholder="e.g. Romans 8:1, Psalm 23"
                 className={inputCls}
               />
+              {otherRefs.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {otherRefs.map(ref => (
+                    <a
+                      key={ref}
+                      href={buildBibleSearchUrl(ref)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-gold/70 hover:text-gold transition-colors w-fit"
+                    >
+                      <ExternalLink size={11} strokeWidth={2} />
+                      {ref} — Open externally
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -427,6 +571,33 @@ export default function NoteForm({ mode = 'add' }: Props) {
           {saving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Save Sermon Note'}
         </button>
       </div>
+
+      {/* Leave confirmation */}
+      {blocker.state === 'blocked' && (
+        <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-5">
+          <div className="bg-forest-mid border border-forest-light rounded-3xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold text-ivory mb-2">Leave without saving?</h2>
+            <p className="text-ivory-dim text-sm mb-6 leading-relaxed">
+              You have unsaved changes. Your draft has been saved locally
+              {mode === 'add' ? ', but this note has not been added yet.' : '.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => blocker.reset()}
+                className="flex-1 border border-forest-light text-ivory py-3 rounded-xl text-sm font-medium"
+              >
+                Stay
+              </button>
+              <button
+                onClick={() => blocker.proceed()}
+                className="flex-1 bg-forest-light text-ivory py-3 rounded-xl text-sm font-semibold"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
