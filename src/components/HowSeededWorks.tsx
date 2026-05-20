@@ -1,15 +1,20 @@
-import { BookOpen, Lightbulb, Heart, Target } from 'lucide-react'
+import { BookOpen, Lightbulb, Heart, Target, BookMarked } from 'lucide-react'
 
 const STEPS = [
   {
     icon: BookOpen,
     title: 'Capture',
-    body: 'Write a sermon note while listening, or a quiet time note from your personal devotion or Bible reading.',
+    body: 'Write a sermon note while listening, or a quiet time note from your personal devotion or Bible reading. Quiet Time notes can include the full Scripture text for meditation.',
+  },
+  {
+    icon: BookMarked,
+    title: 'Meditate',
+    body: 'Slow down with a passage on the Word tab. Use the meditation prompts to sit with what you read. Optionally track a memory verse.',
   },
   {
     icon: Lightbulb,
     title: 'Reflect',
-    body: 'Use the Reflection Helper to find your main takeaway and personal conviction.',
+    body: 'Use the Reflection Helper to find your main takeaway and personal conviction from what you heard or read.',
   },
   {
     icon: Heart,

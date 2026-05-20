@@ -1,5 +1,5 @@
 import type { SermonNote } from '../types'
-import { getNoteType } from '../types'
+import { getNoteType, MEMORY_STATUS_LABELS } from '../types'
 import { formatDate } from './dates'
 
 export function noteToText(note: SermonNote): string {
@@ -56,6 +56,29 @@ export function noteToText(note: SermonNote): string {
   }
 
   if (isQT) {
+    if (note.scriptureText) {
+      lines.push('')
+      lines.push('SCRIPTURE TEXT')
+      lines.push(`"${note.scriptureText}"`)
+    }
+    if (note.meditationNotes) {
+      lines.push('')
+      lines.push('MEDITATION NOTES')
+      lines.push(note.meditationNotes)
+    }
+    if (note.memoryVerse) {
+      lines.push('')
+      lines.push('MEMORY VERSE')
+      lines.push(`"${note.memoryVerse}"`)
+    }
+    if (note.memoryStatus) {
+      lines.push(`Memorization Status: ${MEMORY_STATUS_LABELS[note.memoryStatus]}`)
+    }
+    if (note.memoryNotes) {
+      lines.push('')
+      lines.push('MEMORY NOTES')
+      lines.push(note.memoryNotes)
+    }
     if (note.gratitude) { lines.push(''); lines.push('GRATITUDE'); lines.push(note.gratitude) }
     if (note.seasonMood) { lines.push(''); lines.push('SEASON / MOOD'); lines.push(note.seasonMood) }
     if (note.answeredPrayer) { lines.push(''); lines.push('ANSWERED PRAYER'); lines.push(note.answeredPrayer) }

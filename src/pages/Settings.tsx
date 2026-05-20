@@ -234,10 +234,13 @@ export default function Settings() {
             <div className="w-9 h-9 rounded-xl bg-forest-light flex items-center justify-center shrink-0">
               <BookOpen size={17} className="text-gold" strokeWidth={1.5} />
             </div>
-            <p className="text-sm font-medium text-ivory">Scripture Passages</p>
+            <p className="text-sm font-medium text-ivory">Scripture & Bible Text</p>
           </div>
+          <p className="text-ivory-dim text-sm leading-relaxed mb-2">
+            Seeded lets you manually type or paste Scripture text in Quiet Time notes for meditation and memorisation. It does not bundle Bible translations or fetch Bible text automatically.
+          </p>
           <p className="text-ivory-dim text-sm leading-relaxed">
-            Seeded opens Scripture references externally and does not bundle Bible translations. Tap a passage to open it on BibleGateway, or use the Copy button to copy the reference. This keeps the app simple, offline-first, and respectful of Bible translation licensing.
+            Scripture references open externally on BibleGateway. This keeps the app offline-first and respectful of Bible translation licensing.
           </p>
         </div>
       </div>

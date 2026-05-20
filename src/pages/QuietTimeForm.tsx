@@ -10,14 +10,16 @@ import { todayIso } from '../lib/dates'
 import { buildBibleSearchUrl } from '../lib/bibleLinks'
 import { getDraft, saveDraft, clearDraft } from '../lib/draft'
 import { compressImage } from '../lib/imageUtils'
-import { FOLLOW_UP_LABELS } from '../types'
-import type { FollowUpStatus, NoteAttachment } from '../types'
+import { FOLLOW_UP_LABELS, MEMORY_STATUS_LABELS } from '../types'
+import type { FollowUpStatus, MemoryStatus, NoteAttachment } from '../types'
 import ReflectionHelper from '../components/ReflectionHelper'
 
 interface FormState {
   title: string
   sermonDate: string
   mainBiblePassage: string
+  scriptureText: string
+  meditationNotes: string
   devotionalSource: string
   fullNotes: string
   keyQuote: string
@@ -26,6 +28,9 @@ interface FormState {
   prayerPoint: string
   weeklyActionStep: string
   followUpStatus: string
+  memoryVerse: string
+  memoryStatus: string
+  memoryNotes: string
   gratitude: string
   seasonMood: string
   answeredPrayer: string
@@ -38,6 +43,8 @@ function makeEmpty(): FormState {
     title: '',
     sermonDate: todayIso(),
     mainBiblePassage: '',
+    scriptureText: '',
+    meditationNotes: '',
     devotionalSource: '',
     fullNotes: '',
     keyQuote: '',
@@ -46,6 +53,9 @@ function makeEmpty(): FormState {
     prayerPoint: '',
     weeklyActionStep: '',
     followUpStatus: 'not_started',
+    memoryVerse: '',
+    memoryStatus: 'not_started',
+    memoryNotes: '',
     gratitude: '',
     seasonMood: '',
     answeredPrayer: '',
@@ -111,6 +121,8 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
           title: note.title,
           sermonDate: note.sermonDate.split('T')[0],
           mainBiblePassage: note.mainBiblePassage ?? '',
+          scriptureText: note.scriptureText ?? '',
+          meditationNotes: note.meditationNotes ?? '',
           devotionalSource: note.devotionalSource ?? '',
           fullNotes: note.fullNotes ?? '',
           keyQuote: note.keyQuote ?? '',
@@ -119,6 +131,9 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
           prayerPoint: note.prayerPoint ?? '',
           weeklyActionStep: note.weeklyActionStep ?? '',
           followUpStatus: note.followUpStatus,
+          memoryVerse: note.memoryVerse ?? '',
+          memoryStatus: note.memoryStatus ?? 'not_started',
+          memoryNotes: note.memoryNotes ?? '',
           gratitude: note.gratitude ?? '',
           seasonMood: note.seasonMood ?? '',
           answeredPrayer: note.answeredPrayer ?? '',
@@ -246,6 +261,8 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
       title: form.title.trim(),
       sermonDate: form.sermonDate || todayIso(),
       mainBiblePassage: form.mainBiblePassage.trim() || undefined,
+      scriptureText: form.scriptureText.trim() || undefined,
+      meditationNotes: form.meditationNotes.trim() || undefined,
       devotionalSource: form.devotionalSource.trim() || undefined,
       fullNotes: form.fullNotes.trim() || undefined,
       keyQuote: form.keyQuote.trim() || undefined,
@@ -254,6 +271,9 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
       prayerPoint: form.prayerPoint.trim() || undefined,
       weeklyActionStep: form.weeklyActionStep.trim() || undefined,
       followUpStatus: form.followUpStatus as FollowUpStatus,
+      memoryVerse: form.memoryVerse.trim() || undefined,
+      memoryStatus: form.memoryStatus as MemoryStatus,
+      memoryNotes: form.memoryNotes.trim() || undefined,
       gratitude: form.gratitude.trim() || undefined,
       seasonMood: form.seasonMood.trim() || undefined,
       answeredPrayer: form.answeredPrayer.trim() || undefined,
@@ -423,6 +443,19 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
               )}
             </div>
             <div>
+              <label className={labelCls}>Full Scripture Text</label>
+              <textarea
+                value={form.scriptureText}
+                onChange={set('scriptureText')}
+                rows={5}
+                placeholder="Paste or type the verses you want to meditate on…"
+                className={textareaCls}
+              />
+              <p className={fieldHintCls}>
+                Seeded does not provide Bible translations. Type or paste the text from your Bible. This will appear on the Scripture tab for meditation and memory practice.
+              </p>
+            </div>
+            <div>
               <label className={labelCls}>Devotional Source</label>
               <input
                 type="text"
@@ -463,6 +496,25 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
                 className={textareaCls}
               />
             </div>
+          </div>
+        </section>
+
+        {/* ── Section 2.5: Meditation ── */}
+        <section>
+          <p className={sectionLabelCls}>Meditation</p>
+          <p className={sectionHelpCls}>
+            Slow down with the passage. What word or phrase stands out? What does it reveal about God, or about you?
+          </p>
+          <div>
+            <label className={labelCls}>Meditation Notes</label>
+            <textarea
+              value={form.meditationNotes}
+              onChange={set('meditationNotes')}
+              rows={4}
+              placeholder="What stood out? What is God saying? What truth will you carry today?"
+              className={textareaCls}
+            />
+            <p className={fieldHintCls}>Optional — a quiet personal reflection on what you read. No right or wrong answer.</p>
           </div>
         </section>
 
@@ -583,6 +635,45 @@ export default function QuietTimeForm({ mode = 'add' }: Props) {
                 onChange={set('answeredPrayer')}
                 rows={2}
                 placeholder="A prayer God has answered, or something to remember"
+                className={textareaCls}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 5.5: Memorization ── */}
+        <section>
+          <p className={sectionLabelCls}>Memorization</p>
+          <p className={sectionHelpCls}>
+            Optionally track a memory verse from this session. Practice it on the Scripture tab.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className={labelCls}>Memory Verse</label>
+              <textarea
+                value={form.memoryVerse}
+                onChange={set('memoryVerse')}
+                rows={2}
+                placeholder="Type the verse or phrase you want to memorise"
+                className={textareaCls}
+              />
+              <p className={fieldHintCls}>Optional — leave blank if using the Full Scripture Text above.</p>
+            </div>
+            <div>
+              <label className={labelCls}>Memorization Status</label>
+              <select value={form.memoryStatus} onChange={set('memoryStatus')} className={inputCls}>
+                {(Object.entries(MEMORY_STATUS_LABELS) as [string, string][]).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Memory Notes</label>
+              <textarea
+                value={form.memoryNotes}
+                onChange={set('memoryNotes')}
+                rows={2}
+                placeholder="Notes on your progress or what is helping you remember"
                 className={textareaCls}
               />
             </div>

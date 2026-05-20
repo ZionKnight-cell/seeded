@@ -9,6 +9,8 @@ export type PrayerStatus = 'active' | 'answered' | 'archived'
 
 export type NoteType = 'sermon' | 'quiet_time'
 
+export type MemoryStatus = 'not_started' | 'memorizing' | 'memorized'
+
 export type SermonCategory =
   | 'faith'
   | 'prayer'
@@ -67,6 +69,12 @@ export interface SermonNote {
   gratitude?: string
   seasonMood?: string
   answeredPrayer?: string
+  // Scripture meditation & memorization (primarily for quiet_time)
+  scriptureText?: string
+  meditationNotes?: string
+  memoryVerse?: string
+  memoryStatus?: MemoryStatus
+  memoryNotes?: string
   createdAt: string
   updatedAt: string
 }
@@ -124,6 +132,12 @@ export const FOLLOW_UP_LABELS: Record<FollowUpStatus, string> = {
   done: 'Done',
   still_working: 'Still Working On It',
   forgot: 'I Forgot',
+}
+
+export const MEMORY_STATUS_LABELS: Record<MemoryStatus, string> = {
+  not_started: 'Not started',
+  memorizing: 'Memorizing',
+  memorized: 'Memorized',
 }
 
 export const PRAYER_STATUS_LABELS: Record<PrayerStatus, string> = {

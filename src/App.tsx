@@ -10,6 +10,7 @@ import AddNote from './pages/AddNote'
 import QuietTimeForm from './pages/QuietTimeForm'
 import Prayer from './pages/Prayer'
 import Review from './pages/Review'
+import Scripture from './pages/Scripture'
 import Settings from './pages/Settings'
 import Onboarding, { isOnboardingDone } from './pages/Onboarding'
 
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/add/quiet-time" element={<QuietTimeForm mode="add" />} />
             <Route path="/prayer" element={<Prayer />} />
             <Route path="/review" element={<Review />} />
+            <Route path="/scripture" element={<Scripture />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>

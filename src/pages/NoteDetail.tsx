@@ -23,7 +23,7 @@ import { useToast } from '../components/Toast'
 import { formatDate } from '../lib/dates'
 import { buildBibleSearchUrl, parseScriptureReferences } from '../lib/bibleLinks'
 import { noteToText, downloadNoteAsText, shareNote } from '../lib/noteExport'
-import { CATEGORY_LABELS, FOLLOW_UP_LABELS, getNoteType } from '../types'
+import { CATEGORY_LABELS, FOLLOW_UP_LABELS, MEMORY_STATUS_LABELS, getNoteType } from '../types'
 import type { SermonNote, FollowUpStatus, NoteAttachment } from '../types'
 
 function Card({ label, children }: { label: string; children: React.ReactNode }) {
@@ -246,7 +246,7 @@ export default function NoteDetail() {
 
       <div className="space-y-3">
         {/* Scripture */}
-        {(note.mainBiblePassage || (!isQT && note.otherScriptureReferences)) && (
+        {(note.mainBiblePassage || (!isQT && note.otherScriptureReferences) || (isQT && note.scriptureText)) && (
           <Card label="Scripture">
             <div className="flex items-start gap-2">
               <BookOpen size={14} className="text-gold mt-0.5 shrink-0" strokeWidth={2} />
@@ -267,6 +267,26 @@ export default function NoteDetail() {
                     ))}
                   </div>
                 )}
+                {isQT && note.scriptureText && (
+                  <div className="mt-3 pt-3 border-t border-forest-light">
+                    <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-2">Scripture Text</p>
+                    <p className="text-ivory text-sm leading-relaxed whitespace-pre-wrap italic">"{note.scriptureText}"</p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(note.scriptureText!)
+                          showToast('Scripture text copied')
+                        } catch {
+                          showToast('Could not copy', 'error')
+                        }
+                      }}
+                      className="flex items-center gap-1 mt-2 text-xs text-gold/60 hover:text-gold transition-colors"
+                    >
+                      <Copy size={10} strokeWidth={2} />
+                      Copy text
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -276,6 +296,13 @@ export default function NoteDetail() {
         {isQT && note.devotionalSource && (
           <Card label="Devotional Source">
             <p className="text-ivory text-sm leading-relaxed">{note.devotionalSource}</p>
+          </Card>
+        )}
+
+        {/* Meditation Notes (QT only) */}
+        {isQT && note.meditationNotes && (
+          <Card label="Meditation">
+            <p className="text-ivory text-sm leading-relaxed whitespace-pre-wrap">{note.meditationNotes}</p>
           </Card>
         )}
 
@@ -393,6 +420,31 @@ export default function NoteDetail() {
                   <p className="text-[10px] font-semibold text-ivory-dim uppercase tracking-widest mb-1">Answered Prayer</p>
                   <p className="text-ivory text-sm leading-relaxed">{note.answeredPrayer}</p>
                 </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Memory (QT only) */}
+        {isQT && (note.memoryVerse || (note.memoryStatus && note.memoryStatus !== 'not_started') || note.memoryNotes) && (
+          <Card label="Memorization">
+            <div className="space-y-2">
+              {note.memoryVerse && (
+                <p className="text-ivory text-sm leading-relaxed italic">"{note.memoryVerse}"</p>
+              )}
+              {note.memoryStatus && (
+                <span className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                  note.memoryStatus === 'memorized'
+                    ? 'text-emerald-400 border-emerald-600/40 bg-emerald-400/10'
+                    : note.memoryStatus === 'memorizing'
+                      ? 'text-gold border-gold/40 bg-gold/10'
+                      : 'text-ivory-dim border-forest-light'
+                }`}>
+                  {MEMORY_STATUS_LABELS[note.memoryStatus]}
+                </span>
+              )}
+              {note.memoryNotes && (
+                <p className="text-ivory-muted text-sm leading-relaxed">{note.memoryNotes}</p>
               )}
             </div>
           </Card>

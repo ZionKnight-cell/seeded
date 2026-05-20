@@ -98,6 +98,10 @@ export default function Notes() {
         (n.gratitude?.toLowerCase().includes(q) ?? false) ||
         (n.seasonMood?.toLowerCase().includes(q) ?? false) ||
         (n.answeredPrayer?.toLowerCase().includes(q) ?? false) ||
+        (n.scriptureText?.toLowerCase().includes(q) ?? false) ||
+        (n.meditationNotes?.toLowerCase().includes(q) ?? false) ||
+        (n.memoryVerse?.toLowerCase().includes(q) ?? false) ||
+        (n.memoryNotes?.toLowerCase().includes(q) ?? false) ||
         (n.category ? CATEGORY_LABELS[n.category].toLowerCase().includes(q) : false) ||
         (n.tags?.some(t => t.toLowerCase().includes(q)) ?? false)
       )
